@@ -5,7 +5,7 @@ package schedule
 import (
 	"time"
 
-	"github.com/go-kanna/validate"
+	"github.com/go-kanna/validator"
 )
 
 // Since2000 holds a time in 2000 or later, as a value type of kanna-value.
@@ -15,7 +15,7 @@ func (s Since2000) Time() time.Time { return s.t }
 
 func NewSince2000(t time.Time) (Since2000, error) {
 	if t.Year() < 2000 {
-		return Since2000{}, validate.FailWith("too_early", map[string]any{"year": 2000})
+		return Since2000{}, validator.FailWith("too_early", map[string]any{"year": 2000})
 	}
 	return Since2000{t: t}, nil
 }
@@ -28,7 +28,7 @@ func (d Deadline) Time() time.Time { return d.t }
 
 func NewDeadline(t time.Time) (Deadline, error) {
 	if t.Year() < 2000 {
-		return Deadline{}, validate.FailWith("too_early", map[string]any{"year": 2000})
+		return Deadline{}, validator.FailWith("too_early", map[string]any{"year": 2000})
 	}
 	return Deadline{t: t}, nil
 }
@@ -47,5 +47,5 @@ func NewShift(v string) (Shift, error) {
 	case ShiftDay, ShiftNight:
 		return s, nil
 	}
-	return "", validate.Inclusion()
+	return "", validator.Inclusion()
 }

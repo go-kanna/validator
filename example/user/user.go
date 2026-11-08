@@ -1,17 +1,17 @@
 // Package user declares the request a sign-up endpoint accepts and the rules
-// it has to meet. kanna-validate turns the validate tags into the Validate
-// methods in validate_gen.go.
+// it has to meet. kanna-validator turns the validate tags into the Validate
+// methods in validator_gen.go.
 package user
 
 import (
 	"strings"
 
-	"github.com/go-kanna/validate"
+	"github.com/go-kanna/validator"
 	"github.com/go-kanna/value/rule"
 )
 
 //go:generate go tool kanna-value
-//go:generate go tool kanna-validate
+//go:generate go tool kanna-validator
 
 // Email is an address checked when it is built or decoded, so the tag below
 // only has to say that one is required. kanna-value turns it into a value type
@@ -49,8 +49,8 @@ type Address struct {
 // checked, and what it adds to errs is reported with the rest. It is the place
 // for a rule a tag cannot express, such as this one, which depends on two
 // fields at once: an admin must sign up with a company address.
-func (x CreateUserRequest) validate(errs *validate.Errors) {
+func (x CreateUserRequest) validate(errs *validator.Errors) {
 	if x.Role == "admin" && !strings.HasSuffix(x.Email.String(), "@example.com") {
-		errs.Add("email", validate.Fail("corp_domain"))
+		errs.Add("email", validator.Fail("corp_domain"))
 	}
 }

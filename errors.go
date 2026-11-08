@@ -1,4 +1,4 @@
-package validate
+package validator
 
 import (
 	"bytes"
@@ -146,13 +146,13 @@ func (e Errors) Err() error {
 }
 
 // Error lists every broken rule, such as
-// "validate: name: blank; tags[2]: too_long (count=20)".
+// "validator: name: blank; tags[2]: too_long (count=20)".
 func (e Errors) Error() string {
 	parts := make([]string, len(e))
 	for i, fe := range e {
 		parts[i] = fe.Error()
 	}
-	return "validate: " + strings.Join(parts, "; ")
+	return "validator: " + strings.Join(parts, "; ")
 }
 
 // Unwrap returns each FieldError, so that errors.As finds the rule's error
@@ -211,7 +211,7 @@ type tokens struct {
 func (w *tokens) write(t jsontext.Token) {
 	if w.err == nil {
 		if err := w.enc.WriteToken(t); err != nil {
-			w.err = fmt.Errorf("validate: %w", err)
+			w.err = fmt.Errorf("validator: %w", err)
 		}
 	}
 }
@@ -229,7 +229,7 @@ func (w *tokens) detail(fe FieldError) {
 		w.write(text(k))
 		if w.err == nil {
 			if err := json.MarshalEncode(w.enc, params[k], json.Deterministic(true)); err != nil {
-				w.err = fmt.Errorf("validate: param %q of %s: %w", k, fe.Field, err)
+				w.err = fmt.Errorf("validator: param %q of %s: %w", k, fe.Field, err)
 			}
 		}
 	}

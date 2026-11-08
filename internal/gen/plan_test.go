@@ -9,7 +9,7 @@ import (
 	"github.com/go-kanna/internal/packages"
 	"github.com/go-kanna/internal/pkgtest"
 
-	"github.com/go-kanna/validate/internal/gen"
+	"github.com/go-kanna/validator/internal/gen"
 )
 
 // plans loads files as one package and plans its targets, as gen.Plans spells

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kanna/validate"
-	"github.com/go-kanna/validate/internal/gen/testdata/emit"
+	"github.com/go-kanna/validator"
+	"github.com/go-kanna/validator/internal/gen/testdata/emit"
 )
 
 // validRequest breaks no rule of emit.Request.
@@ -46,7 +46,7 @@ type checker struct{ err error }
 
 func (c checker) Validate() error { return c.err }
 
-// TestGenerated calls the methods in testdata/emit/validate_gen.go and checks
+// TestGenerated calls the methods in testdata/emit/validator_gen.go and checks
 // what they report, encoded as an API would send it.
 func TestGenerated(t *testing.T) {
 	t.Parallel()
@@ -118,7 +118,7 @@ func TestGenerated(t *testing.T) {
 				r.Code = "abc"
 				r.Confirm = "secrets"
 				r.Billing = &emit.Address{}
-				r.Extra = checker{err: validate.Fail("unreachable")}
+				r.Extra = checker{err: validator.Fail("unreachable")}
 			},
 			want: `{"zip":[{"error":"invalid"}],"post_code":[{"error":"invalid"}],"code":[{"error":"invalid"}],` +
 				`"confirm":[{"error":"confirmation","attribute":"password"}],` +
@@ -178,9 +178,9 @@ func TestGenerated(t *testing.T) {
 				}
 				return
 			}
-			errs, ok := errors.AsType[validate.Errors](err)
+			errs, ok := errors.AsType[validator.Errors](err)
 			if !ok {
-				t.Fatalf("Validate() = %v, want validate.Errors", err)
+				t.Fatalf("Validate() = %v, want validator.Errors", err)
 			}
 			got, err := json.Marshal(errs)
 			if err != nil {
@@ -201,7 +201,7 @@ func TestGenerated_PromotedThroughNil(t *testing.T) {
 	var (
 		valid   = emit.ByPointer{Item: &emit.Item{SKU: "A1"}}
 		invalid = emit.ByPointer{Item: &emit.Item{}}
-		failing = emit.ByInterface{Checker: checker{err: validate.Fail("no")}}
+		failing = emit.ByInterface{Checker: checker{err: validator.Fail("no")}}
 	)
 	tests := []struct {
 		name string
@@ -241,9 +241,9 @@ func TestGenerated_PromotedThroughNil(t *testing.T) {
 				}
 				return
 			}
-			errs, ok := errors.AsType[validate.Errors](err)
+			errs, ok := errors.AsType[validator.Errors](err)
 			if !ok {
-				t.Fatalf("Validate() = %v, want validate.Errors", err)
+				t.Fatalf("Validate() = %v, want validator.Errors", err)
 			}
 			var got []string
 			for _, e := range errs {
@@ -262,7 +262,7 @@ func TestGenerated_CountKeepsTheFieldsType(t *testing.T) {
 	r := validRequest()
 	r.Quantity, r.Score = 1001, -1
 
-	errs, ok := errors.AsType[validate.Errors](r.Validate())
+	errs, ok := errors.AsType[validator.Errors](r.Validate())
 	if !ok || len(errs) != 2 {
 		t.Fatalf("Validate() = %v, want the errors of quantity and score", errs)
 	}
@@ -316,7 +316,7 @@ func TestGenerated_ConfirmsThroughPointers(t *testing.T) {
 			if got := err != nil; got != tt.want {
 				t.Errorf("Validate() = %v, want an error %t", err, tt.want)
 			}
-			errs, ok := errors.AsType[validate.Errors](err)
+			errs, ok := errors.AsType[validator.Errors](err)
 			if tt.want && (!ok || len(errs) != 1 || errs[0].Field != "new_again") {
 				t.Errorf("Validate() = %v, want the confirmation of new_again alone", err)
 			}
@@ -379,8 +379,8 @@ func FuzzGenerated_FloatBound(f *testing.F) {
 		r := validRequest()
 		r.Score = x
 
-		errs, _ := errors.AsType[validate.Errors](r.Validate())
-		broken := slices.ContainsFunc(errs, func(e validate.FieldError) bool { return e.Field == "score" })
+		errs, _ := errors.AsType[validator.Errors](r.Validate())
+		broken := slices.ContainsFunc(errs, func(e validator.FieldError) bool { return e.Field == "score" })
 		if broken != !(x > 0) {
 			t.Errorf("score %v (%#x) reported %t, want %t", x, bits, broken, !(x > 0))
 		}

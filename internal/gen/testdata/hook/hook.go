@@ -1,17 +1,17 @@
 // Package hook declares validate hooks, which take the runtime's
-// *validate.Errors and so need a package loaded within the module.
+// *validator.Errors and so need a package loaded within the module.
 package hook
 
-import "github.com/go-kanna/validate"
+import "github.com/go-kanna/validator"
 
 //kanna:validate
 type Signup struct {
 	Email string `json:"email" validate:"required"`
 }
 
-func (s Signup) validate(errs *validate.Errors) {
+func (s Signup) validate(errs *validator.Errors) {
 	if s.Email == "admin@example.com" {
-		errs.Add("email", validate.Fail("reserved"))
+		errs.Add("email", validator.Fail("reserved"))
 	}
 }
 
@@ -23,9 +23,9 @@ type Audit struct {
 	By string `json:"by" validate:"required"`
 }
 
-func (a *Audit) validate(errs *validate.Errors) {
+func (a *Audit) validate(errs *validator.Errors) {
 	if a.By == "root" {
-		errs.Add("by", validate.Fail("reserved"))
+		errs.Add("by", validator.Fail("reserved"))
 	}
 }
 

@@ -1,15 +1,12 @@
-module github.com/go-kanna/validate/bench
+module github.com/go-kanna/validator/bench
 
 go 1.27.0
 
 toolchain go1.27.3
 
-tool github.com/go-kanna/validate/cmd/kanna-validate
+tool github.com/go-kanna/validator/cmd/kanna-validator
 
-require (
-	github.com/go-kanna/validate v0.0.18
-	github.com/go-playground/validator/v10 v10.30.6
-)
+require github.com/go-playground/validator/v10 v10.30.6
 
 require (
 	github.com/gabriel-vasile/mimetype v1.4.16 // indirect

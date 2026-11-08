@@ -1,18 +1,15 @@
-module github.com/go-kanna/validate/example
+module github.com/go-kanna/validator/example
 
 go 1.27.0
 
 toolchain go1.27.3
 
 tool (
-	github.com/go-kanna/validate/cmd/kanna-validate
+	github.com/go-kanna/validator/cmd/kanna-validator
 	github.com/go-kanna/value/cmd/kanna-value
 )
 
-require (
-	github.com/go-kanna/validate v0.0.26
-	github.com/go-kanna/value v0.0.12
-)
+require github.com/go-kanna/value v0.0.12
 
 require (
 	github.com/go-kanna/internal v0.0.28 // indirect

@@ -1,10 +1,10 @@
-module github.com/go-kanna/validate
+module github.com/go-kanna/validator
 
 go 1.27.0
 
 toolchain go1.27.3
 
-require github.com/go-kanna/internal v0.0.28
+require github.com/go-kanna/internal v0.0.31
 
 require (
 	golang.org/x/mod v0.42.0 // indirect

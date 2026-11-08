@@ -28,7 +28,7 @@ const generator = validation.Generator
 type target struct {
 	scan.Struct
 
-	// hook is the validate(*validate.Errors) method the struct declares, which
+	// hook is the validate(*validator.Errors) method the struct declares, which
 	// the generated Validate calls last, or nil.
 	hook *types.Func
 }

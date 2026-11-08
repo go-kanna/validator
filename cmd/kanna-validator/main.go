@@ -1,11 +1,11 @@
-// Command kanna-validate generates Validate methods from the validate tags of
+// Command kanna-validator generates Validate methods from the validate tags of
 // structs marked //kanna:validate.
 package main
 
 import (
 	"os"
 
-	"github.com/go-kanna/validate/internal/gen"
+	"github.com/go-kanna/validator/internal/gen"
 )
 
 func main() {

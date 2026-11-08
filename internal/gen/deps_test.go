@@ -33,7 +33,7 @@ func TestDeps(t *testing.T) {
 	if !slices.Equal(r.Packages, []string{"example.com/app/p"}) {
 		t.Errorf("Packages = %q", r.Packages)
 	}
-	if len(r.Writes) != 1 || !strings.HasSuffix(r.Writes[0], filepath.Join("p", "validate_gen.go")) {
+	if len(r.Writes) != 1 || !strings.HasSuffix(r.Writes[0], filepath.Join("p", "validator_gen.go")) {
 		t.Errorf("Writes = %q", r.Writes)
 	}
 	if !slices.Equal(r.Declares, []string{"example.com/app/p.In.Validate"}) {

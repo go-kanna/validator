@@ -1,4 +1,4 @@
-package validate_test
+package validator_test
 
 import (
 	jsonv1 "encoding/json"
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kanna/validate"
+	"github.com/go-kanna/validator"
 )
 
 // email stands in for a value type of kanna-value: its UnmarshalJSON rejects a
@@ -36,7 +36,7 @@ func (r *role) UnmarshalText(text []byte) error {
 		*r = s
 		return nil
 	}
-	return validate.Inclusion()
+	return validator.Inclusion()
 }
 
 // Validate finds nothing: only decoding is under test where a role is decoded
@@ -57,7 +57,7 @@ func (p *period) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 		return err //nolint:wrapcheck // encoding/json/v2 reports it with its position
 	}
 	if v.To < v.From {
-		return validate.Fail("backwards")
+		return validator.Fail("backwards")
 	}
 	*p = period(v)
 	return nil
@@ -65,12 +65,12 @@ func (p *period) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 
 // Validate stands in for `validate:"required"` on both ends.
 func (p period) Validate() error {
-	var errs validate.Errors
+	var errs validator.Errors
 	if p.From == 0 {
-		errs.Add("from", validate.Blank())
+		errs.Add("from", validator.Blank())
 	}
 	if p.To == 0 {
-		errs.Add("to", validate.Blank())
+		errs.Add("to", validator.Blank())
 	}
 	return errs.Err()
 }
@@ -89,18 +89,18 @@ type signUp struct {
 	Labels  map[string]email `json:"labels"`
 }
 
-// Validate stands in for what kanna-validate generates for
+// Validate stands in for what kanna-validator generates for
 // `validate:"required"` on Email, Name, and Role, and for the nested Stay.
 func (s signUp) Validate() error {
-	var errs validate.Errors
+	var errs validator.Errors
 	if s.Email.v == "" {
-		errs.Add("email", validate.Blank())
+		errs.Add("email", validator.Blank())
 	}
 	if s.Name == "" {
-		errs.Add("name", validate.Blank())
+		errs.Add("name", validator.Blank())
 	}
 	if s.Role == "" {
-		errs.Add("role", validate.Blank())
+		errs.Add("role", validator.Blank())
 	}
 	errs.Nest("stay", s.Stay.Validate())
 	return errs.Err()
@@ -112,7 +112,7 @@ func TestDecodeJSON(t *testing.T) {
 	tests := []struct {
 		name string
 		in   string
-		want validate.Errors
+		want validator.Errors
 	}{
 		{
 			name: "valid",
@@ -123,23 +123,23 @@ func TestDecodeJSON(t *testing.T) {
 			name: "every rejection with its path, then what Validate finds",
 			in: `{"email":"x","name":"","role":"root","stay":{"from":2,"to":1},"address":{"zip":"y"},` +
 				`"backups":["a@example.com","z"],"labels":{"home":"w"}}`,
-			want: validate.Errors{
+			want: validator.Errors{
 				{Field: "email", Err: &typeError{code: "email"}},
-				{Field: "role", Err: validate.Inclusion()},
-				{Field: "stay", Err: validate.Fail("backwards")},
+				{Field: "role", Err: validator.Inclusion()},
+				{Field: "stay", Err: validator.Fail("backwards")},
 				{Field: "address.zip", Err: &typeError{code: "email"}},
 				{Field: "backups[1]", Err: &typeError{code: "email"}},
 				{Field: "labels.home", Err: &typeError{code: "email"}},
-				{Field: "name", Err: validate.Blank()},
+				{Field: "name", Err: validator.Blank()},
 			},
 		},
 		{
 			name: "Validate on fields that were never sent",
 			in:   `{"name":"kanna","stay":{"to":2}}`,
-			want: validate.Errors{
-				{Field: "email", Err: validate.Blank()},
-				{Field: "role", Err: validate.Blank()},
-				{Field: "stay.from", Err: validate.Blank()},
+			want: validator.Errors{
+				{Field: "email", Err: validator.Blank()},
+				{Field: "role", Err: validator.Blank()},
+				{Field: "stay.from", Err: validator.Blank()},
 			},
 		},
 	}
@@ -149,7 +149,7 @@ func TestDecodeJSON(t *testing.T) {
 			t.Parallel()
 
 			var got signUp
-			err := validate.DecodeJSON(strings.NewReader(tt.in), &got)
+			err := validator.DecodeJSON(strings.NewReader(tt.in), &got)
 			if tt.want == nil {
 				if err != nil {
 					t.Fatalf("DecodeJSON() error = %v, want nil", err)
@@ -157,7 +157,7 @@ func TestDecodeJSON(t *testing.T) {
 				return
 			}
 
-			errs, ok := errors.AsType[validate.Errors](err)
+			errs, ok := errors.AsType[validator.Errors](err)
 			if !ok || !equalErrors(errs, tt.want) {
 				t.Errorf("DecodeJSON() error = %v, want %v", err, tt.want)
 			}
@@ -169,7 +169,7 @@ func TestDecodeJSON_KeepsDecoding(t *testing.T) {
 	t.Parallel()
 
 	got := signUp{Email: email{v: "old@example.com"}}
-	if err := validate.DecodeJSON(strings.NewReader(`{"email":"x","name":"kanna"}`), &got); err == nil {
+	if err := validator.DecodeJSON(strings.NewReader(`{"email":"x","name":"kanna"}`), &got); err == nil {
 		t.Fatal("DecodeJSON() error = nil, want the rejected email")
 	}
 	if got.Email.v != "old@example.com" {
@@ -187,12 +187,12 @@ type mailbox struct {
 
 // Validate stands in for `validate:"required"` on both.
 func (m mailbox) Validate() error {
-	var errs validate.Errors
+	var errs validator.Errors
 	if m.Email.v == "" {
-		errs.Add("email", validate.Blank())
+		errs.Add("email", validator.Blank())
 	}
 	if m.EmailBackup.v == "" {
-		errs.Add("email_backup", validate.Blank())
+		errs.Add("email_backup", validator.Blank())
 	}
 	return errs.Err()
 }
@@ -201,14 +201,14 @@ func TestDecodeJSON_KeepsWhatIsBesideARejection(t *testing.T) {
 	t.Parallel()
 
 	var got mailbox
-	err := validate.DecodeJSON(strings.NewReader(`{"email":"x"}`), &got)
+	err := validator.DecodeJSON(strings.NewReader(`{"email":"x"}`), &got)
 
 	// email_backup starts like email but does not lie under it.
-	want := validate.Errors{
+	want := validator.Errors{
 		{Field: "email", Err: &typeError{code: "email"}},
-		{Field: "email_backup", Err: validate.Blank()},
+		{Field: "email_backup", Err: validator.Blank()},
 	}
-	if errs, ok := errors.AsType[validate.Errors](err); !ok || !equalErrors(errs, want) {
+	if errs, ok := errors.AsType[validator.Errors](err); !ok || !equalErrors(errs, want) {
 		t.Errorf("DecodeJSON() error = %v, want %v", err, want)
 	}
 }
@@ -220,20 +220,20 @@ func TestDecodeJSON_TopLevel(t *testing.T) {
 		name string
 		v    interface{ Validate() error }
 		in   string
-		want validate.Errors
+		want validator.Errors
 	}{
 		{
 			name: "rejected while decoding",
 			v:    new(role),
 			in:   `"root"`,
-			want: validate.Errors{{Field: validate.Base, Err: validate.Inclusion()}},
+			want: validator.Errors{{Field: validator.Base, Err: validator.Inclusion()}},
 		},
 		{
 			// Nothing was set, so whatever Validate finds is left out.
 			name: "with Validate",
 			v:    new(period),
 			in:   `{"from":2,"to":1}`,
-			want: validate.Errors{{Field: validate.Base, Err: validate.Fail("backwards")}},
+			want: validator.Errors{{Field: validator.Base, Err: validator.Fail("backwards")}},
 		},
 	}
 
@@ -241,8 +241,8 @@ func TestDecodeJSON_TopLevel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validate.DecodeJSON(strings.NewReader(tt.in), tt.v)
-			if errs, ok := errors.AsType[validate.Errors](err); !ok || !equalErrors(errs, tt.want) {
+			err := validator.DecodeJSON(strings.NewReader(tt.in), tt.v)
+			if errs, ok := errors.AsType[validator.Errors](err); !ok || !equalErrors(errs, tt.want) {
 				t.Errorf("DecodeJSON() error = %v, want %v", err, tt.want)
 			}
 		})
@@ -255,7 +255,7 @@ func TestDecodeJSON_LeavesTimeToEncodingJSON(t *testing.T) {
 	// encoding/json/v2 sets a time to zero on null, where Time.UnmarshalJSON
 	// would leave it as it was.
 	got := stamped{At: time.Unix(1, 0)}
-	if err := validate.DecodeJSON(strings.NewReader(`{"at":null}`), &got); err != nil {
+	if err := validator.DecodeJSON(strings.NewReader(`{"at":null}`), &got); err != nil {
 		t.Fatalf("DecodeJSON() error = %v, want nil", err)
 	}
 	if !got.At.IsZero() {
@@ -288,7 +288,7 @@ func (*impatient) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 	if _, err := dec.ReadToken(); err != nil {
 		return err //nolint:wrapcheck // encoding/json/v2 reports it with its position
 	}
-	return validate.Invalid()
+	return validator.Invalid()
 }
 
 func TestDecodeJSON_Unreadable(t *testing.T) {
@@ -348,8 +348,8 @@ func TestDecodeJSON_Unreadable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validate.DecodeJSON(strings.NewReader(tt.in), tt.v)
-			if _, ok := errors.AsType[validate.Errors](err); ok || !tt.as(err) {
+			err := validator.DecodeJSON(strings.NewReader(tt.in), tt.v)
+			if _, ok := errors.AsType[validator.Errors](err); ok || !tt.as(err) {
 				t.Errorf("DecodeJSON() error = %v (%T), want encoding/json's own error", err, err)
 			}
 		})

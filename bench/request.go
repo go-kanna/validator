@@ -1,4 +1,4 @@
-// Package bench measures the Validate methods kanna-validate generates against
+// Package bench measures the Validate methods kanna-validator generates against
 // go-playground/validator, both reading the same tags of one struct. The tags
 // keep to rules the two check alike, so that both do the same work.
 //
@@ -7,7 +7,7 @@
 //	go generate ./...
 package bench
 
-//go:generate go tool kanna-validate
+//go:generate go tool kanna-validator
 
 // CreateUserRequest is the request of the README, with len=8 in place of
 // pattern=, which go-playground/validator does not have.

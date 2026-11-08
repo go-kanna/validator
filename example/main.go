@@ -1,5 +1,5 @@
 // Command example decodes a few sign-up requests the way an HTTP handler
-// would, showing what kanna-validate generates: plain Validate methods, and
+// would, showing what kanna-validator generates: plain Validate methods, and
 // errors that carry Rails' codes under the fields' JSON names.
 //
 // Regenerate with:
@@ -14,9 +14,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-kanna/validate"
+	"github.com/go-kanna/validator"
 
-	"github.com/go-kanna/validate/example/user"
+	"github.com/go-kanna/validator/example/user"
 )
 
 func main() {
@@ -61,14 +61,14 @@ func main() {
 		fmt.Fprintf(os.Stdout, "=== %s ===\n", r.title)
 
 		var req user.CreateUserRequest
-		err := validate.DecodeJSON(strings.NewReader(r.body), &req)
+		err := validator.DecodeJSON(strings.NewReader(r.body), &req)
 
-		errs, ok := errors.AsType[validate.Errors](err)
+		errs, ok := errors.AsType[validator.Errors](err)
 		switch {
 		case err == nil:
 			fmt.Fprintf(os.Stdout, "200 OK: %s <%s>\n\n", req.Name, req.Email)
 		case ok:
-			body, err := json.MarshalIndent(map[string]validate.Errors{"errors": errs}, "", "  ")
+			body, err := json.MarshalIndent(map[string]validator.Errors{"errors": errs}, "", "  ")
 			if err != nil {
 				panic(err)
 			}

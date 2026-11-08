@@ -23,7 +23,7 @@ lint-fix:
 
 .PHONY: build
 build:
-	go build -o $(BUILD_DIR)/kanna-validate ./cmd/kanna-validate
+	go build -o $(BUILD_DIR)/kanna-validator ./cmd/kanna-validator
 
 .PHONY: clean
 clean:
