@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kanna/validate"
-	"github.com/go-playground/validator/v10"
+	"github.com/go-kanna/validator"
+	playground "github.com/go-playground/validator/v10"
 
-	"github.com/go-kanna/validate/bench"
+	"github.com/go-kanna/validator/bench"
 )
 
 var requests = []struct {
@@ -34,7 +34,7 @@ var requests = []struct {
 	},
 	{
 		// One rule broken per field: go-playground stops at the first rule a
-		// field breaks, while kanna-validate reports every one.
+		// field breaks, while kanna-validator reports every one.
 		name: "invalid",
 		req: bench.CreateUserRequest{
 			Name:     "",
@@ -50,10 +50,10 @@ var requests = []struct {
 }
 
 // newPlayground returns a go-playground/validator set up to match
-// kanna-validate: a required struct must not be its zero value, and a field is
+// kanna-validator: a required struct must not be its zero value, and a field is
 // named by its JSON name.
-func newPlayground() *validator.Validate {
-	v := validator.New(validator.WithRequiredStructEnabled())
+func newPlayground() *playground.Validate {
+	v := playground.New(playground.WithRequiredStructEnabled())
 	v.RegisterTagNameFunc(func(f reflect.StructField) string {
 		name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
 		return name
@@ -64,7 +64,7 @@ func newPlayground() *validator.Validate {
 func BenchmarkValidate(b *testing.B) {
 	v := newPlayground()
 	for _, r := range requests {
-		b.Run(r.name+"/kanna-validate", func(b *testing.B) {
+		b.Run(r.name+"/kanna-validator", func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
 				_ = r.req.Validate()
@@ -90,7 +90,7 @@ func TestSameFields(t *testing.T) {
 			t.Parallel()
 
 			if got := kannaFields(t, r.req.Validate()); !slices.Equal(got, r.fields) {
-				t.Errorf("kanna-validate reports %v, want %v", got, r.fields)
+				t.Errorf("kanna-validator reports %v, want %v", got, r.fields)
 			}
 			if got := playgroundFields(t, v.Struct(&r.req)); !slices.Equal(got, r.fields) {
 				t.Errorf("go-playground reports %v, want %v", got, r.fields)
@@ -103,9 +103,9 @@ func kannaFields(t *testing.T, err error) []string {
 	if err == nil {
 		return nil
 	}
-	errs, ok := errors.AsType[validate.Errors](err)
+	errs, ok := errors.AsType[validator.Errors](err)
 	if !ok {
-		t.Fatalf("kanna-validate: %v", err)
+		t.Fatalf("kanna-validator: %v", err)
 	}
 	fields := make([]string, 0, len(errs))
 	for _, fe := range errs {
@@ -118,7 +118,7 @@ func playgroundFields(t *testing.T, err error) []string {
 	if err == nil {
 		return nil
 	}
-	errs, ok := errors.AsType[validator.ValidationErrors](err)
+	errs, ok := errors.AsType[playground.ValidationErrors](err)
 	if !ok {
 		t.Fatalf("go-playground: %v", err)
 	}

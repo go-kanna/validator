@@ -1,4 +1,4 @@
-package validate_test
+package validator_test
 
 import (
 	jsonv1 "encoding/json"
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kanna/validate"
+	"github.com/go-kanna/validator"
 )
 
 // typeError stands in for a Coded error from another package, such as
@@ -24,8 +24,8 @@ func (e *typeError) Params() map[string]any { return nil }
 
 // equalErrors compares by field and by the text of each error, which is enough
 // to tell apart the errors these tests build.
-func equalErrors(a, b validate.Errors) bool {
-	return slices.EqualFunc(a, b, func(x, y validate.FieldError) bool {
+func equalErrors(a, b validator.Errors) bool {
+	return slices.EqualFunc(a, b, func(x, y validator.FieldError) bool {
 		return x.Field == y.Field && x.Err.Error() == y.Err.Error()
 	})
 }
@@ -33,12 +33,12 @@ func equalErrors(a, b validate.Errors) bool {
 func TestErrors_Add(t *testing.T) {
 	t.Parallel()
 
-	var errs validate.Errors
-	errs.Add("name", validate.Blank())
+	var errs validator.Errors
+	errs.Add("name", validator.Blank())
 	errs.Add("age", nil)
-	errs.Add("tags[1]", validate.TooLong(20))
+	errs.Add("tags[1]", validator.TooLong(20))
 
-	want := validate.Errors{{Field: "name", Err: validate.Blank()}, {Field: "tags[1]", Err: validate.TooLong(20)}}
+	want := validator.Errors{{Field: "name", Err: validator.Blank()}, {Field: "tags[1]", Err: validator.TooLong(20)}}
 	if !equalErrors(errs, want) {
 		t.Errorf("Errors = %v, want %v", errs, want)
 	}
@@ -47,22 +47,22 @@ func TestErrors_Add(t *testing.T) {
 func TestErrors_Nest(t *testing.T) {
 	t.Parallel()
 
-	inner := validate.Errors{{Field: "zip", Err: validate.Blank()}, {Field: "city", Err: validate.TooLong(30)}}
+	inner := validator.Errors{{Field: "zip", Err: validator.Blank()}, {Field: "city", Err: validator.TooLong(30)}}
 
 	tests := []struct {
 		name  string
 		field string
 		err   error
-		want  validate.Errors
+		want  validator.Errors
 	}{
 		{name: "nil", field: "address", err: nil, want: nil},
 		{
 			name:  "Errors move under the field",
 			field: "address",
 			err:   inner,
-			want: validate.Errors{
-				{Field: "address.zip", Err: validate.Blank()},
-				{Field: "address.city", Err: validate.TooLong(30)},
+			want: validator.Errors{
+				{Field: "address.zip", Err: validator.Blank()},
+				{Field: "address.city", Err: validator.TooLong(30)},
 			},
 		},
 		{
@@ -75,27 +75,27 @@ func TestErrors_Nest(t *testing.T) {
 		},
 		{
 			name:  "element of a slice",
-			field: validate.Index("items", 2),
-			err:   validate.Errors{{Field: "sku", Err: validate.Blank()}},
-			want:  validate.Errors{{Field: "items[2].sku", Err: validate.Blank()}},
+			field: validator.Index("items", 2),
+			err:   validator.Errors{{Field: "sku", Err: validator.Blank()}},
+			want:  validator.Errors{{Field: "items[2].sku", Err: validator.Blank()}},
 		},
 		{
 			name:  "a Coded error lands on the field",
 			field: "email",
 			err:   &typeError{code: "email"},
-			want:  validate.Errors{{Field: "email", Err: &typeError{code: "email"}}},
+			want:  validator.Errors{{Field: "email", Err: &typeError{code: "email"}}},
 		},
 		{
 			name:  "a plain error lands on the field",
 			field: "address",
 			err:   errors.New("lookup failed"),
-			want:  validate.Errors{{Field: "address", Err: errors.New("lookup failed")}},
+			want:  validator.Errors{{Field: "address", Err: errors.New("lookup failed")}},
 		},
 		{
 			name:  "an error without a field lands on base",
 			field: "",
 			err:   errors.New("lookup failed"),
-			want:  validate.Errors{{Field: validate.Base, Err: errors.New("lookup failed")}},
+			want:  validator.Errors{{Field: validator.Base, Err: errors.New("lookup failed")}},
 		},
 	}
 
@@ -103,7 +103,7 @@ func TestErrors_Nest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var got validate.Errors
+			var got validator.Errors
 			got.Nest(tt.field, tt.err)
 			if !equalErrors(got, tt.want) {
 				t.Errorf("Nest(%q) = %v, want %v", tt.field, got, tt.want)
@@ -130,12 +130,12 @@ func TestPaths(t *testing.T) {
 	tests := []struct {
 		got, want string
 	}{
-		{got: validate.Index("tags", 2), want: "tags[2]"},
-		{got: validate.Key("labels", "primary"), want: "labels.primary"},
-		{got: validate.Key("scores", 7), want: "scores.7"},
-		{got: validate.Index(validate.Key("groups", "admin"), 0), want: "groups.admin[0]"},
-		{got: validate.Key("levels", level(1)), want: "levels.1"},
-		{got: validate.Key("ranges", span{1, 3}), want: "ranges.1-3"},
+		{got: validator.Index("tags", 2), want: "tags[2]"},
+		{got: validator.Key("labels", "primary"), want: "labels.primary"},
+		{got: validator.Key("scores", 7), want: "scores.7"},
+		{got: validator.Index(validator.Key("groups", "admin"), 0), want: "groups.admin[0]"},
+		{got: validator.Key("levels", level(1)), want: "levels.1"},
+		{got: validator.Key("ranges", span{1, 3}), want: "ranges.1-3"},
 	}
 	for _, tt := range tests {
 		if tt.got != tt.want {
@@ -149,12 +149,12 @@ func TestErrors_Err(t *testing.T) {
 
 	// A nil error and not an Errors holding nothing, which would compare
 	// non-nil.
-	if err := (validate.Errors{}).Err(); err != nil {
+	if err := (validator.Errors{}).Err(); err != nil {
 		t.Errorf("Err() of no errors = %v, want nil", err)
 	}
 
-	errs := validate.Errors{{Field: "name", Err: validate.Blank()}}
-	got, ok := errors.AsType[validate.Errors](errs.Err())
+	errs := validator.Errors{{Field: "name", Err: validator.Blank()}}
+	got, ok := errors.AsType[validator.Errors](errs.Err())
 	if !ok || !equalErrors(got, errs) {
 		t.Errorf("Err() = %v, want the errors themselves", errs.Err())
 	}
@@ -163,13 +163,13 @@ func TestErrors_Err(t *testing.T) {
 func TestErrors_Error(t *testing.T) {
 	t.Parallel()
 
-	errs := validate.Errors{
-		{Field: "name", Err: validate.Blank()},
-		{Field: "tags[2]", Err: validate.TooLong(20)},
+	errs := validator.Errors{
+		{Field: "name", Err: validator.Blank()},
+		{Field: "tags[2]", Err: validator.TooLong(20)},
 		{Field: "address", Err: errors.New("lookup failed")},
 	}
 
-	want := "validate: name: blank; tags[2]: too_long (count=20); address: lookup failed"
+	want := "validator: name: blank; tags[2]: too_long (count=20); address: lookup failed"
 	if got := errs.Error(); got != want {
 		t.Errorf("Error() = %q, want %q", got, want)
 	}
@@ -178,7 +178,7 @@ func TestErrors_Error(t *testing.T) {
 func TestErrors_UnwrapReachesTheRulesError(t *testing.T) {
 	t.Parallel()
 
-	errs := validate.Errors{{Field: "name", Err: validate.Blank()}, {Field: "email", Err: &typeError{code: "email"}}}
+	errs := validator.Errors{{Field: "name", Err: validator.Blank()}, {Field: "email", Err: &typeError{code: "email"}}}
 
 	if got, ok := errors.AsType[*typeError](errs.Err()); !ok || got.code != "email" {
 		t.Errorf("errors.AsType found %v, %v, want the email error", got, ok)
@@ -190,12 +190,12 @@ var _ interface {
 	Path() string
 	Code() string
 	Params() map[string]any
-} = validate.FieldError{}
+} = validator.FieldError{}
 
 func TestFieldError_Path(t *testing.T) {
 	t.Parallel()
 
-	if got := (validate.FieldError{Field: "tags[1]"}).Path(); got != "tags[1]" {
+	if got := (validator.FieldError{Field: "tags[1]"}).Path(); got != "tags[1]" {
 		t.Errorf("Path() = %q, want %q", got, "tags[1]")
 	}
 }
@@ -209,7 +209,7 @@ func TestFieldError_Code(t *testing.T) {
 		wantCode   string
 		wantParams map[string]any
 	}{
-		{name: "built-in", err: validate.TooLong(20), wantCode: "too_long", wantParams: map[string]any{"count": 20}},
+		{name: "built-in", err: validator.TooLong(20), wantCode: "too_long", wantParams: map[string]any{"count": 20}},
 		{name: "Coded from elsewhere", err: &typeError{code: "email"}, wantCode: "email"},
 		{name: "not Coded", err: errors.New("lookup failed"), wantCode: "invalid"},
 	}
@@ -218,7 +218,7 @@ func TestFieldError_Code(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			fe := validate.FieldError{Field: "x", Err: tt.err}
+			fe := validator.FieldError{Field: "x", Err: tt.err}
 			if fe.Code() != tt.wantCode || !maps.Equal(fe.Params(), tt.wantParams) {
 				t.Errorf("Code(), Params() = %q, %v, want %q, %v", fe.Code(), fe.Params(), tt.wantCode, tt.wantParams)
 			}
@@ -234,46 +234,46 @@ func TestErrors_MarshalJSON(t *testing.T) {
 
 	tests := []struct {
 		name string
-		errs validate.Errors
+		errs validator.Errors
 		want string
 	}{
 		{name: "nil", errs: nil, want: `{}`},
 		{
 			name: "fields in the order they first broke",
-			errs: validate.Errors{
-				{Field: "password", Err: validate.Blank()},
-				{Field: "name", Err: validate.Blank()},
-				{Field: "password", Err: validate.TooShort(12)},
+			errs: validator.Errors{
+				{Field: "password", Err: validator.Blank()},
+				{Field: "name", Err: validator.Blank()},
+				{Field: "password", Err: validator.TooShort(12)},
 			},
 			want: `{"password":[{"error":"blank"},{"error":"too_short","count":12}],"name":[{"error":"blank"}]}`,
 		},
 		{
 			name: "params in key order beside the code",
-			errs: validate.Errors{{Field: "confirm", Err: validate.FailWith("between", map[string]any{"min": 1, "max": 9})}},
+			errs: validator.Errors{{Field: "confirm", Err: validator.FailWith("between", map[string]any{"min": 1, "max": 9})}},
 			want: `{"confirm":[{"error":"between","max":9,"min":1}]}`,
 		},
 		{
 			name: "a param that is a map, in key order too",
-			errs: validate.Errors{{
+			errs: validator.Errors{{
 				Field: "x",
-				Err:   validate.FailWith("odd", map[string]any{"range": map[string]int{"to": 9, "from": 1}}),
+				Err:   validator.FailWith("odd", map[string]any{"range": map[string]int{"to": 9, "from": 1}}),
 			}},
 			want: `{"x":[{"error":"odd","range":{"from":1,"to":9}}]}`,
 		},
 		{
 			name: "a param named error is left out",
-			errs: validate.Errors{{Field: "x", Err: validate.FailWith("odd", map[string]any{"error": "shadow"})}},
+			errs: validator.Errors{{Field: "x", Err: validator.FailWith("odd", map[string]any{"error": "shadow"})}},
 			want: `{"x":[{"error":"odd"}]}`,
 		},
 		{
 			name: "an error that is not Coded",
-			errs: validate.Errors{{Field: "address", Err: errors.New("lookup failed")}},
+			errs: validator.Errors{{Field: "address", Err: errors.New("lookup failed")}},
 			want: `{"address":[{"error":"invalid"}]}`,
 		},
 		{
 			// A map key spells part of the path, and may be any bytes.
 			name: "invalid UTF-8 in a field",
-			errs: validate.Errors{{Field: "labels.\xff", Err: validate.Blank()}},
+			errs: validator.Errors{{Field: "labels.\xff", Err: validator.Blank()}},
 			want: `{"labels.` + "�" + `":[{"error":"blank"}]}`,
 		},
 	}
@@ -310,7 +310,7 @@ func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("disk ful
 func TestErrors_MarshalJSONTo_ReportsTheWriter(t *testing.T) {
 	t.Parallel()
 
-	errs := validate.Errors{{Field: "name", Err: validate.Blank()}}
+	errs := validator.Errors{{Field: "name", Err: validator.Blank()}}
 
 	err := errs.MarshalJSONTo(jsontext.NewEncoder(failingWriter{}))
 	if err == nil || !strings.Contains(err.Error(), "disk full") {
@@ -321,7 +321,7 @@ func TestErrors_MarshalJSONTo_ReportsTheWriter(t *testing.T) {
 func TestErrors_MarshalJSON_UnencodableParam(t *testing.T) {
 	t.Parallel()
 
-	errs := validate.Errors{{Field: "x", Err: validate.FailWith("odd", map[string]any{"f": func() {}})}}
+	errs := validator.Errors{{Field: "x", Err: validator.FailWith("odd", map[string]any{"f": func() {}})}}
 
 	_, err := json.Marshal(errs)
 	if err == nil || !strings.Contains(err.Error(), `param "f" of x`) {

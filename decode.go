@@ -1,4 +1,4 @@
-package validate
+package validator
 
 import (
 	"cmp"
@@ -44,7 +44,7 @@ func DecodeJSON(r io.Reader, v interface{ Validate() error }) error {
 		json.UnmarshalFromFunc(d.unmarshalText),
 	)))
 	if err != nil {
-		return fmt.Errorf("validate: %w", err)
+		return fmt.Errorf("validator: %w", err)
 	}
 
 	var found Errors

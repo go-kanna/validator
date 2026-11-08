@@ -1,5 +1,5 @@
 // Package gen generates Validate methods from the validate tags of structs
-// marked //kanna:validate. cmd/kanna-validate runs it.
+// marked //kanna:validate. cmd/kanna-validator runs it.
 //
 // The tags are written as for go-playground/validator, but nothing reads them
 // at run time: each rule becomes plain Go in the generated method, reporting

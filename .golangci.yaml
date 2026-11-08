@@ -34,8 +34,8 @@ linters:
       os-chdir: true
     wrapcheck:
       extra-ignore-sigs:
-        - validate.Errors).Err(                  # hands back what Validate collected; nothing underneath to wrap
-        - ) *github.com/go-kanna/validate.Error  # makes the error rather than passing one on
+        - validator.Errors).Err(                  # hands back what Validate collected; nothing underneath to wrap
+        - ) *github.com/go-kanna/validator.Error  # makes the error rather than passing one on
       ignore-package-globs:
         - github.com/go-kanna/value/rule # Its errors are a rule's verdict, returned as they are, as the example's Email does.
   enable:

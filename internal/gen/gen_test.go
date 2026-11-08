@@ -10,7 +10,7 @@ import (
 	"github.com/go-kanna/internal/cli"
 	"github.com/go-kanna/internal/packages"
 
-	"github.com/go-kanna/validate/internal/gen"
+	"github.com/go-kanna/validator/internal/gen"
 )
 
 // TestMain loads every module the tests write outside any workspace. A
@@ -25,7 +25,7 @@ func TestMain(m *testing.M) {
 }
 
 // writeModule writes files into a fresh module and returns its directory. The
-// module resolves github.com/go-kanna/validate to this checkout, which the
+// module resolves github.com/go-kanna/validator to this checkout, which the
 // generated code imports, and borrows its go.sum so that nothing is fetched.
 func writeModule(t *testing.T, files map[string]string) string {
 	t.Helper()
@@ -41,8 +41,8 @@ func writeModule(t *testing.T, files map[string]string) string {
 
 	dir := t.TempDir()
 	files["go.mod"] = "module example.com/app\n\ngo 1.27.0\n\n" +
-		"require github.com/go-kanna/validate v0.0.0\n\n" +
-		"replace github.com/go-kanna/validate => " + root + "\n"
+		"require github.com/go-kanna/validator v0.0.0\n\n" +
+		"replace github.com/go-kanna/validator => " + root + "\n"
 	files["go.sum"] = string(sum)
 	for name, content := range files {
 		path := filepath.Join(dir, name)
@@ -54,7 +54,8 @@ func writeModule(t *testing.T, files map[string]string) string {
 	return dir
 }
 
-// run runs kanna-validate in dir and returns its exit code, stdout, and stderr.
+// run runs kanna-validator in dir and returns its exit code, stdout, and
+// stderr.
 func run(t *testing.T, dir string, args ...string) (int, string, string) {
 	t.Helper()
 
@@ -83,16 +84,16 @@ func readFile(t *testing.T, path string) string {
 
 const signupSrc = `package app
 
-import "github.com/go-kanna/validate"
+import "github.com/go-kanna/validator"
 
 //kanna:validate
 type Signup struct {
 	Name string ` + "`json:\"name\" validate:\"required,max=50\"`" + `
 }
 
-func (s Signup) validate(errs *validate.Errors) {
+func (s Signup) validate(errs *validator.Errors) {
 	if s.Name == "root" {
-		errs.Add("name", validate.Fail("reserved"))
+		errs.Add("name", validator.Fail("reserved"))
 	}
 }
 `
@@ -104,7 +105,7 @@ const sinceSrc = `package model
 import (
 	"time"
 
-	"github.com/go-kanna/validate"
+	"github.com/go-kanna/validator"
 )
 
 type Since2000 struct{ t time.Time }
@@ -113,7 +114,7 @@ func (s Since2000) Time() time.Time { return s.t }
 
 func NewSince2000(t time.Time) (Since2000, error) {
 	if t.Year() < 2000 {
-		return Since2000{}, validate.FailWith("too_early", map[string]any{"year": 2000})
+		return Since2000{}, validator.FailWith("too_early", map[string]any{"year": 2000})
 	}
 	return Since2000{t: t}, nil
 }
@@ -138,7 +139,7 @@ func TestCommand_Generates(t *testing.T) {
 	t.Parallel()
 
 	dir := writeModule(t, map[string]string{"app.go": signupSrc})
-	path := filepath.Join(dir, "validate_gen.go")
+	path := filepath.Join(dir, "validator_gen.go")
 
 	code, stdout, stderr := run(t, dir)
 	if code != cli.ExitOK || stdout != "" || stderr != "" {
@@ -146,7 +147,7 @@ func TestCommand_Generates(t *testing.T) {
 	}
 	if got := readFile(t, path); !strings.Contains(got, "func (x Signup) Validate() error {") ||
 		!strings.Contains(got, "x.validate(&errs)") {
-		t.Errorf("validate_gen.go does not declare Validate calling the hook:\n%s", got)
+		t.Errorf("validator_gen.go does not declare Validate calling the hook:\n%s", got)
 	}
 
 	// The output compiles against the runtime it imports.
@@ -159,7 +160,7 @@ func TestCommand_Generates(t *testing.T) {
 	if code != cli.ExitOK || stdout != "" || stderr != "" {
 		t.Errorf("-check right after generating = %d, stdout %q, stderr %q; want success in silence", code, stdout, stderr)
 	}
-	if code, stdout, _ := run(t, dir, "-v"); code != cli.ExitOK || stdout != "unchanged ./validate_gen.go\n" {
+	if code, stdout, _ := run(t, dir, "-v"); code != cli.ExitOK || stdout != "unchanged ./validator_gen.go\n" {
 		t.Errorf("-v again = %d, stdout %q; want the file listed as unchanged", code, stdout)
 	}
 }
@@ -197,7 +198,7 @@ type Task struct {
 	if code != cli.ExitOK || stdout != "" || stderr != "" {
 		t.Fatalf("run = %d, stdout %q, stderr %q; want success in silence", code, stdout, stderr)
 	}
-	got := readFile(t, filepath.Join(dir, "validate_gen.go"))
+	got := readFile(t, filepath.Join(dir, "validator_gen.go"))
 	for _, want := range []string{
 		`"example.com/app/model"`,
 		`model2 "example.com/app/legacy/model"`,
@@ -205,7 +206,7 @@ type Task struct {
 		`if _, err := model2.NewSince2000(*x.Due); err != nil {`,
 	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("validate_gen.go does not contain %q:\n%s", want, got)
+			t.Errorf("validator_gen.go does not contain %q:\n%s", want, got)
 		}
 	}
 
@@ -223,7 +224,7 @@ const deadlineSrc = `package model
 import (
 	"time"
 
-	"github.com/go-kanna/validate"
+	"github.com/go-kanna/validator"
 )
 
 type Deadline struct{ t time.Time }
@@ -232,7 +233,7 @@ func (d Deadline) Time() time.Time { return d.t }
 
 func NewDeadline(t time.Time) (Deadline, error) {
 	if t.Year() < 2000 {
-		return Deadline{}, validate.FailWith("too_early", map[string]any{"year": 2000})
+		return Deadline{}, validator.FailWith("too_early", map[string]any{"year": 2000})
 	}
 	return Deadline{t: t}, nil
 }
@@ -274,14 +275,14 @@ func TestCommand_RuleNamesAValueType(t *testing.T) {
 			if code != cli.ExitOK || stdout != "" || stderr != "" {
 				t.Fatalf("run = %d, stdout %q, stderr %q; want success in silence", code, stdout, stderr)
 			}
-			got := readFile(t, filepath.Join(dir, "validate_gen.go"))
+			got := readFile(t, filepath.Join(dir, "validator_gen.go"))
 			for _, want := range []string{
 				`"example.com/app/model"`,
 				"if _, err := model.NewDeadline(*x.Done); err != nil {",
 				`errs.Add("done", err)`,
 			} {
 				if !strings.Contains(got, want) {
-					t.Errorf("validate_gen.go does not contain %q:\n%s", want, got)
+					t.Errorf("validator_gen.go does not contain %q:\n%s", want, got)
 				}
 			}
 
@@ -303,7 +304,7 @@ func TestCommand_GeneratesEveryPackage(t *testing.T) {
 	if code != cli.ExitOK {
 		t.Fatalf("run = %d, stderr %q", code, stderr)
 	}
-	if want := "wrote ./validate_gen.go\nwrote other/validate_gen.go\n"; stdout != want {
+	if want := "wrote ./validator_gen.go\nwrote other/validator_gen.go\n"; stdout != want {
 		t.Errorf("stdout = %q, want %q", stdout, want)
 	}
 }
@@ -312,10 +313,10 @@ func TestCommand_Check(t *testing.T) {
 	t.Parallel()
 
 	dir := writeModule(t, map[string]string{"app.go": signupSrc})
-	path := filepath.Join(dir, "validate_gen.go")
+	path := filepath.Join(dir, "validator_gen.go")
 
 	code, _, stderr := run(t, dir, "-check")
-	if want := "./validate_gen.go: error: not generated yet; run go generate\n"; code != cli.ExitFailure ||
+	if want := "./validator_gen.go: error: not generated yet; run go generate\n"; code != cli.ExitFailure ||
 		stderr != want {
 		t.Errorf("-check before generating = %d, stderr %q; want %q", code, stderr, want)
 	}
@@ -327,11 +328,11 @@ func TestCommand_Check(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "app.go"), strings.Replace(signupSrc, "max=50", "max=40", 1))
 
 	code, _, stderr = run(t, dir, "-check")
-	if want := "./validate_gen.go: error: out of date; run go generate\n"; code != cli.ExitFailure || stderr != want {
+	if want := "./validator_gen.go: error: out of date; run go generate\n"; code != cli.ExitFailure || stderr != want {
 		t.Errorf("-check after a change = %d, stderr %q; want %q", code, stderr, want)
 	}
 	if readFile(t, path) != before {
-		t.Error("-check rewrote validate_gen.go")
+		t.Error("-check rewrote validator_gen.go")
 	}
 }
 
@@ -339,7 +340,7 @@ func TestCommand_RemovesLeftover(t *testing.T) {
 	t.Parallel()
 
 	dir := writeModule(t, map[string]string{"app.go": signupSrc})
-	path := filepath.Join(dir, "validate_gen.go")
+	path := filepath.Join(dir, "validator_gen.go")
 	if code, _, stderr := run(t, dir); code != cli.ExitOK {
 		t.Fatalf("run = %d, stderr %q", code, stderr)
 	}
@@ -347,17 +348,17 @@ func TestCommand_RemovesLeftover(t *testing.T) {
 	const nothing = "warning: no struct is marked //kanna:validate in example.com/app\n"
 
 	code, _, stderr := run(t, dir, "-check")
-	want := nothing + "./validate_gen.go: error: left over from an earlier run; run go generate\n"
+	want := nothing + "./validator_gen.go: error: left over from an earlier run; run go generate\n"
 	if code != cli.ExitFailure || stderr != want {
 		t.Errorf("-check = %d, stderr %q; want %q", code, stderr, want)
 	}
 
 	code, stdout, stderr := run(t, dir, "-v")
-	if code != cli.ExitOK || stdout != "removed ./validate_gen.go\n" || stderr != nothing {
+	if code != cli.ExitOK || stdout != "removed ./validator_gen.go\n" || stderr != nothing {
 		t.Errorf("run = %d, stdout %q, stderr %q; want the removal and a warning", code, stdout, stderr)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Errorf("validate_gen.go still exists: %v", err)
+		t.Errorf("validator_gen.go still exists: %v", err)
 	}
 
 	// Once the file is gone, a run says the same and succeeds the same.
@@ -380,8 +381,8 @@ func TestCommand_RegeneratesOverStaleOutput(t *testing.T) {
 	if code, _, stderr := run(t, dir); code != cli.ExitOK {
 		t.Fatalf("run over stale output = %d, stderr %q", code, stderr)
 	}
-	if got := readFile(t, filepath.Join(dir, "validate_gen.go")); !strings.Contains(got, "x.FullName") {
-		t.Errorf("validate_gen.go was not regenerated:\n%s", got)
+	if got := readFile(t, filepath.Join(dir, "validator_gen.go")); !strings.Contains(got, "x.FullName") {
+		t.Errorf("validator_gen.go was not regenerated:\n%s", got)
 	}
 }
 
@@ -405,7 +406,7 @@ func TestCommand_SaysWhatWasSetAside(t *testing.T) {
 	}
 	for _, want := range []string{
 		`./app.go:16:18: error: cannot use "x"`,
-		"./validate_gen.go: warning: set aside because it no longer compiles; " +
+		"./validator_gen.go: warning: set aside because it no longer compiles; " +
 			"it is regenerated once the errors above are fixed",
 	} {
 		if !strings.Contains(stderr, want) {
@@ -439,8 +440,8 @@ func TestCommand_Failures(t *testing.T) {
 		},
 		{
 			name:  "hand-written output",
-			files: map[string]string{"app.go": signupSrc, "validate_gen.go": "package app\n"},
-			want:  "./validate_gen.go: error: has no generated-code header, so it looks hand-written",
+			files: map[string]string{"app.go": signupSrc, "validator_gen.go": "package app\n"},
+			want:  "./validator_gen.go: error: has no generated-code header, so it looks hand-written",
 		},
 		{
 			name: "rule naming two packages the file imports alike",
@@ -506,7 +507,7 @@ type Contact struct {
 	}
 	for _, want := range []string{
 		"./app.go:16:6: warning: Profile has validate tags but no //kanna:validate, so they are never checked\n",
-		"./validate_gen.go: warning: imports github.com/go-kanna/value/rule, which go.mod does not require; " +
+		"./validator_gen.go: warning: imports github.com/go-kanna/value/rule, which go.mod does not require; " +
 			"run go mod tidy\n",
 	} {
 		if !strings.Contains(stderr, want) {
@@ -585,7 +586,7 @@ func TestCommand_Tags(t *testing.T) {
 		t.Errorf("run without the tag = %d, stderr %q; want success with nothing marked", code, stderr)
 	}
 	if code, stdout, stderr := run(t, dir, "-v", "-tags", "special"); code != cli.ExitOK ||
-		stdout != "wrote ./validate_gen.go\n" {
+		stdout != "wrote ./validator_gen.go\n" {
 		t.Errorf("run with the tag = %d, stdout %q, stderr %q; want the file written", code, stdout, stderr)
 	}
 }
@@ -607,9 +608,9 @@ func TestCommand_Usage(t *testing.T) {
 		t.Errorf("-h = %d, want %d", code, cli.ExitOK)
 	}
 	for _, want := range []string{
-		"kanna-validate: generate Validate methods from the validate tags of structs marked //kanna:validate",
-		"kanna-validate [flags] [packages]",
-		"//go:generate go tool kanna-validate needs no argument",
+		"kanna-validator: generate Validate methods from the validate tags of structs marked //kanna:validate",
+		"kanna-validator [flags] [packages]",
+		"//go:generate go tool kanna-validator needs no argument",
 		"-tags tags",
 	} {
 		if !strings.Contains(stdout, want) {

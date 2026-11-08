@@ -1,4 +1,4 @@
-package validate
+package validator
 
 import (
 	"fmt"
@@ -61,9 +61,9 @@ func (e *Error) Params() map[string]any {
 }
 
 // Error formats the code and then the params in key order, such as
-// "validate: too_long (count=50)".
+// "validator: too_long (count=50)".
 func (e *Error) Error() string {
-	return "validate: " + describe(e.code, e.Params())
+	return "validator: " + describe(e.code, e.Params())
 }
 
 // number is what a numeric rule compares against. The count it reports keeps

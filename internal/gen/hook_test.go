@@ -7,7 +7,7 @@ import (
 // hookTypes declares the types the structs of the hook tests hold.
 const hookTypes = `package app
 
-import "github.com/go-kanna/validate"
+import "github.com/go-kanna/validator"
 
 type Address struct {
 	Zip string ` + "`json:\"zip\"`" + `
@@ -21,8 +21,8 @@ type Item struct {
 type Manual struct{}
 
 func (Manual) Validate() error {
-	var errs validate.Errors
-	errs.Add("virtual", validate.Blank())
+	var errs validator.Errors
+	errs.Add("virtual", validator.Blank())
 	return errs.Err()
 }
 
@@ -39,7 +39,7 @@ func TestCommand_HookPathsThatCanBe(t *testing.T) {
 		"types.go": hookTypes,
 		"order.go": `package app
 
-import "github.com/go-kanna/validate"
+import "github.com/go-kanna/validator"
 
 //kanna:validate
 type Order struct {
@@ -58,9 +58,9 @@ type Order struct {
 
 const named = "name"
 
-func (o Order) validate(errs *validate.Errors) {
+func (o Order) validate(errs *validator.Errors) {
 	errs.Add(named, nil)
-	errs.Add(validate.Base, nil)
+	errs.Add(validator.Base, nil)
 	errs.Add("address.zip", nil)
 	errs.Add("address.base", nil)
 	errs.Add("items[0].sku", nil)
@@ -72,19 +72,19 @@ func (o Order) validate(errs *validate.Errors) {
 	errs.Add("payload.anything", nil)
 	errs.Add("checked.anything", nil)
 	errs.Add("wrapped.virtual", nil)
-	errs.Add(validate.Index("items", 1), nil)
-	errs.Add(validate.Index(validate.Index("grid", 0), 1), nil)
-	errs.Add(validate.Key("labels", "x"), nil)
+	errs.Add(validator.Index("items", 1), nil)
+	errs.Add(validator.Index(validator.Index("grid", 0), 1), nil)
+	errs.Add(validator.Key("labels", "x"), nil)
 	errs.Nest("", nil)
 	errs.Nest("address", nil)
 	func() {
 		errs.Add("address.zip", nil)
-		errs := &validate.Errors{}
+		errs := &validator.Errors{}
 		errs.Add("nothing", nil)
 	}()
-	var other validate.Errors
+	var other validator.Errors
 	other.Add("nothing", nil)
-	other.Add(validate.Index("nothing", 0), nil)
+	other.Add(validator.Index("nothing", 0), nil)
 	_ = o.note
 }
 
@@ -95,7 +95,7 @@ type Flat struct {
 	Manual
 }
 
-func (f Flat) validate(errs *validate.Errors) {
+func (f Flat) validate(errs *validator.Errors) {
 	errs.Add("virtual", nil)
 }
 `,
@@ -113,7 +113,7 @@ func TestCommand_HookPathsThatCannotBe(t *testing.T) {
 		"types.go": hookTypes,
 		"order.go": `package app
 
-import "github.com/go-kanna/validate"
+import "github.com/go-kanna/validator"
 
 //kanna:validate
 type Order struct {
@@ -128,7 +128,7 @@ type Order struct {
 
 const typo = "nme"
 
-func (o Order) validate(errs *validate.Errors) {
+func (o Order) validate(errs *validator.Errors) {
 	errs.Add("aeg", nil)
 	errs.Add(typo, nil)
 	errs.Add("zzzzzz", nil)
@@ -141,9 +141,9 @@ func (o Order) validate(errs *validate.Errors) {
 	errs.Add("address[0]", nil)
 	errs.Add("base.zip", nil)
 	errs.Add("", nil)
-	errs.Add(validate.Index("name", 0), nil)
-	errs.Add(validate.Key("items", "x"), nil)
-	errs.Nest(validate.Index("", 0), nil)
+	errs.Add(validator.Index("name", 0), nil)
+	errs.Add(validator.Key("items", "x"), nil)
+	errs.Nest(validator.Index("", 0), nil)
 	errs.Add("virtual", nil)
 }
 `,
@@ -158,7 +158,7 @@ func (o Order) validate(errs *validate.Errors) {
 ./order.go:20:11: error: "nme" is not a path of Order: Order has no field "nme"
   did you mean "name"?
 ./order.go:21:11: error: "zzzzzz" is not a path of Order: Order has no field "zzzzzz"
-  an error on Order as a whole goes under validate.Base
+  an error on Order as a whole goes under validator.Base
 ./order.go:22:11: error: "address.zpi" is not a path of Order: address has no field "zpi"
   did you mean "address.zip"?
 ./order.go:23:11: error: "age.years" is not a path of Order: age is int, with nothing under it
@@ -170,14 +170,14 @@ func (o Order) validate(errs *validate.Errors) {
 ./order.go:28:11: error: "address[0]" is not a path of Order: address is a struct, whose fields follow a dot
 ./order.go:29:11: error: "base.zip" is not a path of Order: base is the value as a whole, with nothing under it
 ./order.go:30:11: error: "" is not a path of Order: Add needs a field
-  an error on Order as a whole goes under validate.Base
-./order.go:31:11: error: validate.Index("name", 0) is not a path of Order: ` +
-		`validate.Index needs a slice or an array, not string
-./order.go:32:11: error: validate.Key("items", "x") is not a path of Order: validate.Key needs a map, not []Item
-./order.go:33:12: error: validate.Index("", 0) is not a path of Order: ` +
-		`validate.Index needs a slice or an array, not Order
+  an error on Order as a whole goes under validator.Base
+./order.go:31:11: error: validator.Index("name", 0) is not a path of Order: ` +
+		`validator.Index needs a slice or an array, not string
+./order.go:32:11: error: validator.Key("items", "x") is not a path of Order: validator.Key needs a map, not []Item
+./order.go:33:12: error: validator.Index("", 0) is not a path of Order: ` +
+		`validator.Index needs a slice or an array, not Order
 ./order.go:34:11: error: "virtual" is not a path of Order: Order has no field "virtual"
-  an error on Order as a whole goes under validate.Base
+  an error on Order as a whole goes under validator.Base
 `
 	if stderr != want {
 		t.Errorf("stderr:\n%s\nwant:\n%s", stderr, want)

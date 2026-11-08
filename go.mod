@@ -1,4 +1,4 @@
-module github.com/go-kanna/validate
+module github.com/go-kanna/validator
 
 go 1.27.0
 

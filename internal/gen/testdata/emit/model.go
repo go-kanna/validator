@@ -1,13 +1,13 @@
-// Package emit holds one of every construct kanna-validate generates. Its
-// validate_gen.go is the golden file of the emit test, and the test calls the
+// Package emit holds one of every construct kanna-validator generates. Its
+// validator_gen.go is the golden file of the emit test, and the test calls the
 // methods it declares.
 package emit
 
 import (
 	"time"
 
-	"github.com/go-kanna/validate"
-	"github.com/go-kanna/validate/internal/gen/testdata/emit/schedule"
+	"github.com/go-kanna/validator"
+	"github.com/go-kanna/validator/internal/gen/testdata/emit/schedule"
 )
 
 // patternRequestZip takes the name the pattern of Request.Zip would get.
@@ -22,7 +22,7 @@ type Item struct{ SKU string }
 
 func (i Item) Validate() error {
 	if i.SKU == "" {
-		return validate.Errors{{Field: "sku", Err: validate.Blank()}}
+		return validator.Errors{{Field: "sku", Err: validator.Blank()}}
 	}
 	return nil
 }
@@ -34,7 +34,7 @@ func (s Span) IsZero() bool { return s == Span{} }
 
 func (s Span) Validate() error {
 	if s.To < s.From {
-		return validate.Fail("inverted")
+		return validator.Fail("inverted")
 	}
 	return nil
 }
@@ -102,9 +102,9 @@ type Request struct {
 	Audit
 }
 
-func (x Request) validate(errs *validate.Errors) {
+func (x Request) validate(errs *validator.Errors) {
 	if x.Role == "admin" && x.Age < 21 {
-		errs.Add(validate.Base, validate.Fail("too_young_for_admin"))
+		errs.Add(validator.Base, validator.Fail("too_young_for_admin"))
 	}
 }
 

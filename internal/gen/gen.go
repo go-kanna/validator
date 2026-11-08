@@ -17,12 +17,12 @@ import (
 	"github.com/go-kanna/internal/validation"
 )
 
-// config holds what kanna-validate's own flags set.
+// config holds what kanna-validator's own flags set.
 type config struct {
 	tags string
 }
 
-// Command returns kanna-validate.
+// Command returns kanna-validator.
 func Command() cli.Command[config] {
 	return cli.Command[config]{
 		Name:    generator,
