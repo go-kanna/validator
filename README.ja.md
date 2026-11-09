@@ -163,7 +163,7 @@ user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserReques
   did you mean "age"?
 ```
 
-`validator.Key` が書くキーは `.` を含みうるので、マップの先は見ません。kanna-validator が `Validate` を書かない型と、インターフェースの先も、何を報告するかはその `Validate` 次第なので見ません。そのような型を JSON 名なしで埋め込んでいれば、その階層のどの名前も報告しません。`Add("")` も生成を止めます。構造体全体のエラーは `validator.Base` に置くからです。`Nest("")` は、埋め込み構造体と同じく、ネストしたものを構造体の階層に置くので通します。`validator.Index("items", i) + ".sku"` のように実行時に組み立てるパスは検査しません。
+`validator.Key` が書くキーは `.` を含みうるので、マップの先は見ません。kanna-validator が `Validate` を書かない型と、インターフェースの先も、何を報告するかはその `Validate` 次第なので見ません。そのような型を JSON 名なしで埋め込んでいれば、その階層ではどの名前も通します。`Add("")` も生成を止めます。構造体全体のエラーは `validator.Base` に置くからです。`Nest("")` は、埋め込み構造体と同じく、ネストしたものを構造体の階層に置くので通します。`validator.Index("items", i) + ".sku"` のように実行時に組み立てるパスは検査しません。
 
 ## エラー
 

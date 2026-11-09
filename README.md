@@ -213,7 +213,7 @@ user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserReques
 
 A key, as `validator.Key` writes it, may hold a dot, so what follows a map is not checked. Neither is what follows a
 value whose `Validate` kanna-validator does not write, or an interface, as what it reports is up to it; when one is
-embedded without a JSON name, no name at that level is reported. `Add("")` stops generation too, as an error on the
+embedded without a JSON name, any name at that level passes. `Add("")` stops generation too, as an error on the
 struct as a whole goes under `validator.Base`, while `Nest("")` keeps what it nests at the level of the struct, as for
 an embedded struct. A path made at run time, such as `validator.Index("items", i) + ".sku"`, is not checked.
 
