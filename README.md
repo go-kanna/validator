@@ -7,8 +7,8 @@
 [![Release](https://img.shields.io/github/v/tag/go-kanna/validator?label=release&sort=semver)](https://github.com/go-kanna/validator/tags)
 [![日本語](https://img.shields.io/badge/lang-%E6%97%A5%E6%9C%AC%E8%AA%9E-blue.svg)](README.ja.md)
 
-kanna-validator generates a `Validate` method from the `validate` tags of a struct — plain `if` statements, no
-reflection — and reports whatever breaks as error codes, keyed by the fields' JSON names.
+kanna-validator generates a `Validate` method from the `validate` tags of a struct, as plain `if` statements with no
+reflection, and reports whatever breaks as error codes, keyed by the fields' JSON names.
 
 Part of the [kanna](https://go-kanna.github.io/) family of code generators. Requires Go 1.27, for
 encoding/json/v2.
@@ -134,8 +134,9 @@ Where it differs from go-playground:
 - Every rule a field breaks is reported, not just the first. A value that fails `required` is the exception: it is
   reported `blank` alone, since anything else it breaks only says again that it is missing.
 - `required` means "not the zero value": `""`, `0`, `false`, `nil`, or `IsZero()` for a type that has the method. An
-  empty slice that is not nil is there; bound its length with `min=1`. A 0 sent is the 0 never sent, so where a 0, or a
-  value type whose rule accepts its zero, is a value of its own, take a pointer: `required` then reports only nil.
+  empty slice that is not nil is there; bound its length with `min=1`. A 0 sent cannot be told from a 0 never sent, so
+  where a 0, or a value type whose rule accepts its zero, is a value of its own, take a pointer: `required` then reports
+  only nil.
 - A nil pointer skips every rule but `required`: a `*string` tagged `max=20` accepts nil, one tagged `required,max=20`
   does not. `eqfield` naming a pointer compares what it points to, as for the rules on one, and a nil one equals no
   value: a `*string` confirming another is reported when it is set and the other is not.
@@ -168,7 +169,7 @@ Where it differs from go-playground:
 [kanna-value](#with-kanna-value), known by the shape kanna-value gives it, whose constructor `NewType(T) (Type, error)`
 holds a value to its rule; or an enum of kanna-value, whose constructor `NewType(string) (Type, error)` accepts only its
 constants. A rule of your own goes in the struct's `validate` method (see [Nesting and hooks](#nesting-and-hooks)),
-which a function shared between structs can serve. A bare `Type` is one of the struct's
+which can call a function shared between structs. A bare `Type` is one of the struct's
 package. `pkg.Type` names its package as Go reads `pkg.Type` in code: by the name the struct's file imports it under.
 Go rejects a named import nothing uses, so a package that only a tag names is imported as `_`, and goes by its own
 name. Nothing else is searched: a package the file does not import is an error, with what to import. The generated code
@@ -176,13 +177,13 @@ records at the field what the constructor returns, with the code and params the 
 
 ## Nesting and hooks
 
-A field whose type has `Validate() error`, or is to have one — another `//kanna:validate` struct, a string type marked
-`//kanna:enum`, whose `Validate` kanna-value writes, a type validating itself by hand, an interface — is validated with
+A field whose type has `Validate() error`, or is to have one (another `//kanna:validate` struct, a string type marked
+`//kanna:enum`, whose `Validate` kanna-value writes, a type validating itself by hand, an interface), is validated with
 it, and its errors are nested under the field: `address.zip`,
 `items[2].sku`, or `labels.primary` for a map, whose key is spelled as encoding/json names it, which a `String` method
 has no say in. Slices, arrays, and maps of such types are validated element by element without a `dive`.
 A type with `Validate` through an embedded pointer or interface is validated only when that is not nil, as a nil pointer
-in a field is skipped. Generation stops when another package does not export what would have to be tested for it.
+in a field is skipped. Generation stops when another package does not export what would have to be tested for nil.
 An embedded struct without a JSON name keeps its errors at the level of the struct embedding it, as encoding/json
 flattens its fields. One tagged `json:"-"`, which encoding/json leaves out instead, keeps them under its Go name, as any
 field tagged so does.
@@ -251,7 +252,7 @@ if err := validator.DecodeJSON(r.Body, &req); err != nil {
 }
 ```
 
-A field whose type rejects its value while decoding — a value type of kanna-value, say — does not stop the decoding:
+A field whose type rejects its value while decoding (a value type of kanna-value, say) does not stop the decoding:
 the rejection is reported at the field's path, alongside whatever the tags find in the rest. `json.Unmarshal` cannot do
 this; it stops at the first rejection, and does not say which field it came from. `DecodeJSON` decodes through
 encoding/json/v2, which matches names case-sensitively and rejects duplicate names.
@@ -372,16 +373,16 @@ package's files before it runs the generators; the file is gone as it should be
 
 ## Example
 
-[`example`](example) decodes sign-up requests the way a handler would — a valid one, one with everything wrong at once,
-an empty one, one the hook rejects, and malformed JSON — and prints the response each gets. CI regenerates it and fails
+[`example`](example) decodes sign-up requests the way a handler would (a valid one, one with everything wrong at once,
+an empty one, one the hook rejects, and malformed JSON) and prints the response each gets. CI regenerates it and fails
 if the output would change.
 
 ## Performance
 
 [`bench`](bench) validates a request like the one in [Use](#use) with the generated `Validate` and with
 go-playground/validator, both reading the same tags; `len=8` stands in for `pattern=`, which go-playground does not
-have. go-playground is set up to report what kanna-validator does — a required struct must not be its zero value, and a
-field goes by its JSON name — and a test fails unless the two find the same fields broken.
+have. go-playground is set up to report what kanna-validator does (a required struct must not be its zero value, and a
+field goes by its JSON name), and a test fails unless the two find the same fields broken.
 
 | Request              | Validator                        | ns/op | B/op | allocs/op |
 |----------------------|----------------------------------|------:|-----:|----------:|
