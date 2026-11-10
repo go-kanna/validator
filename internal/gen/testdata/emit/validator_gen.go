@@ -4,6 +4,7 @@ package emit
 
 import (
 	"maps"
+	"math"
 	"regexp"
 	"slices"
 	"unicode/utf8"
@@ -71,6 +72,14 @@ func (x Request) Validate() error {
 	}
 	if !(x.Ratio <= 1) {
 		errs.Add("ratio", validator.LessThanOrEqualTo[float32](1))
+	}
+
+	if x.Weight == 0 || math.IsNaN(x.Weight) {
+		errs.Add("weight", validator.OtherThan[float64](0))
+	}
+
+	if x.Factor == 1 || math.IsNaN(float64(x.Factor)) {
+		errs.Add("factor", validator.OtherThan[float32](1))
 	}
 
 	if x.Role == "" {
@@ -225,7 +234,8 @@ func (x Request) Validate() error {
 		}
 	}
 
-	for k, v := range x.ByPoint {
+	for _, k := range validator.SortedKeys(x.ByPoint) {
+		v := x.ByPoint[k]
 		errs.Nest(validator.Key("by_point", k), v.Validate())
 	}
 
@@ -251,6 +261,15 @@ func (x Request) Validate() error {
 		if _, err := schedule.NewSince2000(x.Shifts[i]); err != nil {
 			errs.Add(validator.Index("shifts", i), err)
 		}
+	}
+
+	if utf8.RuneCountInString(string(x.Stage)) > 6 {
+		errs.Add("stage", validator.TooLong(6))
+	}
+	if x.Stage != "draft" && x.Stage != "review" {
+		errs.Add("stage", validator.Inclusion())
+	} else {
+		errs.Nest("stage", x.Stage.Validate())
 	}
 
 	errs.Nest("", x.Audit.Validate())
