@@ -154,7 +154,7 @@ func (x CreateUserRequest) validate(errs *validator.Errors) {
 }
 ```
 
-構造体全体に関するエラーは、Rails と同じく `validator.Base`（`"base"`）の下に置きます。
+構造体全体に関するエラーは、Rails と同じく `validator.Base`（`"base"`）の下に置きます。`Add` に、ほかの `Validate` が返したものなどの `Errors` を渡すと、`Nest` と同じく、その 1 つずつをパスの下に移します。
 
 kanna-validator は、生成するときに、フックがエラーを置くパスを検査します。対象は、渡された `Errors` の `Add` と `Nest` の第 1 引数のうち、定数のものと、定数に `validator.Index` や `validator.Key` を使ったものです。パスは、構造体のエラーの名前と同じ読み方で辿ります。フィールドはそのエラーが置かれる名前で、要素は `[0]` で、マップのキーは `.` の後で辿り、どこで終わっても、`base` で終わってもかまいません。どう読んでも何も指さないパスがあれば、生成を止めます:
 

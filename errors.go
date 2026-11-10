@@ -70,8 +70,13 @@ func (e FieldError) Unwrap() error {
 type Errors []FieldError
 
 // Add records err as broken on field. A nil err is ignored, so that the result
-// of a rule can be passed as it is.
+// of a rule can be passed as it is. Errors, such as what another Validate
+// returns, move under field, as Nest moves them.
 func (e *Errors) Add(field string, err error) {
+	if _, ok := errors.AsType[Errors](err); ok {
+		e.Nest(field, err)
+		return
+	}
 	if err != nil {
 		*e = append(*e, FieldError{Field: field, Err: err})
 	}

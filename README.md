@@ -199,7 +199,8 @@ func (x CreateUserRequest) validate(errs *validator.Errors) {
 }
 ```
 
-An error concerning the struct as a whole goes under `validator.Base`, `"base"`, as in Rails.
+An error concerning the struct as a whole goes under `validator.Base`, `"base"`, as in Rails. `Add` given `Errors`,
+such as what another `Validate` returned, moves each of them under the path, as `Nest` does.
 
 kanna-validator checks, as it generates, the paths the hook puts errors under: the first argument of `Add` and `Nest` on
 the `Errors` it is given, when it is a constant, or `validator.Index` or `validator.Key` of one. A path is read as the
