@@ -57,28 +57,28 @@ func (x CreateUserRequest) Validate() error {
 	var errs validator.Errors
 
 	if x.Name == "" {
-		errs.Add("name", validator.Blank())
+		errs.Add(validator.Field("name"), validator.Blank())
 	} else {
 		if utf8.RuneCountInString(x.Name) > 50 {
-			errs.Add("name", validator.TooLong(50))
+			errs.Add(validator.Field("name"), validator.TooLong(50))
 		}
 	}
 
 	if x.Age < 18 {
-		errs.Add("age", validator.GreaterThanOrEqualTo(18))
+		errs.Add(validator.Field("age"), validator.GreaterThanOrEqualTo(18))
 	}
 	// ...
 
 	for i := range x.Tags {
 		if utf8.RuneCountInString(x.Tags[i]) > 20 {
-			errs.Add(validator.Index("tags", i), validator.TooLong(20))
+			errs.Add(validator.Index(validator.Field("tags"), i), validator.TooLong(20))
 		}
 	}
 
 	if x.Address == (Address{}) {
-		errs.Add("address", validator.Blank())
+		errs.Add(validator.Field("address"), validator.Blank())
 	} else {
-		errs.Nest("address", x.Address.Validate())
+		errs.Nest(validator.Field("address"), x.Address.Validate())
 	}
 	// ...
 
@@ -122,7 +122,8 @@ The tags are go-playground/validator's; the codes and params are those of Rails'
 | Tag                                  | Applies to                            | Code                                                                       | Params                             |
 |--------------------------------------|---------------------------------------|----------------------------------------------------------------------------|------------------------------------|
 | `required`                           | anything with a zero value            | `blank`                                                                    |                                    |
-| `min`, `max`, `len`                  | strings (in characters), slices, maps | `too_short`, `too_long`, `wrong_length`                                    | `count`                            |
+| `min`, `max`, `len`                  | strings, in characters                | `too_short`, `too_long`, `wrong_length`                                    | `count`                            |
+| `min`, `max`, `len`                  | slices, maps, in elements             | `too_few`, `too_many`, `wrong_count`                                       | `count`                            |
 | `gt`, `gte`, `lt`, `lte`, `eq`, `ne` | numbers                               | `greater_than`, `greater_than_or_equal_to`, `less_than`, ..., `other_than` | `count`                            |
 | `oneof=a b 'c d'`                    | strings, integers                     | `inclusion`                                                                |                                    |
 | `eqfield=Field`                      | a field of the same type, or a pointer to it | `confirmation`                                                      | `attribute`: the other's JSON name |
@@ -132,9 +133,11 @@ The tags are go-playground/validator's; the codes and params are those of Rails'
 | `omitempty`                          | anything with a zero value            | lets the zero value past the rules after it                                |                                    |
 | `dive`                               | slices, arrays, maps                  | applies the rules after it to each element, or each value of a map         |                                    |
 
-A length in characters counts runes, as go-playground does: `é` written as an `e` and a combining accent is 2, and the
-family emoji 👨‍👩‍👧 is 5. `pattern=` matches anywhere in the string, as Go's `regexp.MatchString` and JSON Schema's
-`pattern` do: `pattern=\d{3}` accepts `"a123b"`, so write `^` and `$` to match the whole of it.
+Rails reports the length of a collection by the codes of a string's; the lengths of slices and maps have codes of their
+own, so that a message can count elements rather than characters. A length in characters counts runes, as go-playground
+does: `é` written as an `e` and a combining accent is 2, and the family emoji 👨‍👩‍👧 is 5. `pattern=` matches anywhere in
+the string, as Go's `regexp.MatchString` and JSON Schema's `pattern` do: `pattern=\d{3}` accepts `"a123b"`, so write `^`
+and `$` to match the whole of it.
 
 Where it differs from go-playground:
 
@@ -232,29 +235,34 @@ calls after every tag has been checked:
 ```go
 func (x CreateUserRequest) validate(errs *validator.Errors) {
 	if x.Role == "admin" && x.Age < 21 {
-		errs.Add("age", validator.Fail("too_young_for_admin"))
+		errs.Add(validator.Field("age"), validator.Fail("too_young_for_admin"))
 	}
 }
 ```
 
-An error concerning the struct as a whole goes under `validator.Base`, `"base"`, as in Rails. `Add` given `Errors`,
-such as what another `Validate` returned, moves each of them under the path, as `Nest` does.
+A path is a `validator.Path`: `validator.Field("address", "zip")` goes through fields by their JSON names, and
+`validator.Index` and `validator.Key` go on to an element or a map's value, as in
+`validator.Key(validator.Field("labels"), k)`. An error concerning the struct as a whole goes under `validator.Base`,
+`"base"`, as in Rails. `Add` given `Errors`, such as what another `Validate` returned, moves each of them under the path,
+as `Nest` does; a field under an element, such as `items[2].sku`, goes so, through `Errors` of its own nested under
+`validator.Index(validator.Field("items"), 2)`.
 
 kanna-validator checks, as it generates, the paths the hook puts errors under: the first argument of `Add` and `Nest` on
-the `Errors` it is given, when it is a constant, or `validator.Index` or `validator.Key` of one. A path is read as the
-errors of the struct are named: through fields, by the names their errors go under, elements as `[0]`, and keys after a
-dot, and it may end at any of them, or in `base`. Generation stops at a path no reading of which names anything:
+the `Errors` it is given, when it is `validator.Field` of constants, `validator.Base`, `validator.Path{}`, or
+`validator.Index` or `validator.Key` of one. A path goes through fields by the names their errors go under, and may end
+at any of them, or in `base`. Generation stops at a path that names nothing:
 
 ```text
 user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserRequest has no field "aeg"
   did you mean "age"?
 ```
 
-A key, as `validator.Key` writes it, may hold a dot, so what follows a map is not checked. Neither is what follows a
-value whose `Validate` kanna-validator does not write, or an interface, as what it reports is up to it; when one is
-embedded without a JSON name, any name at that level passes. `Add("")` stops generation too, as an error on the
-struct as a whole goes under `validator.Base`, while `Nest("")` keeps what it nests at the level of the struct, as for
-an embedded struct. A path made at run time, such as `validator.Index("items", i) + ".sku"`, is not checked.
+Each name given to `validator.Field` is one field, so `validator.Field("address.zip")` is a field named `address.zip`,
+with a hint to write `validator.Field("address", "zip")`. What follows a value whose `Validate` kanna-validator does
+not write, or an interface, is not checked, as what it reports is up to it; when one is embedded without a JSON name,
+any name at that level passes. `Add(validator.Path{})` stops generation too, as an error on the struct as a whole goes
+under `validator.Base`, while `Nest(validator.Path{})` keeps what it nests at the level of the struct, as for an
+embedded struct. A path made of names known only at run time, such as `validator.Field(name)`, is not checked.
 
 ## Errors
 
@@ -268,6 +276,11 @@ order they first broke:
   "confirm": [{"error": "confirmation", "attribute": "password"}]
 }
 ```
+
+Each `FieldError` holds its path both as `Field`, the key above, and as `Segments`, which tell a field
+(`validator.FieldSegment`) from a map key (`validator.KeySegment`) and an index (`validator.IndexSegment`): a key is
+whatever the request sent, which `labels.first_note` spells like a field, so a message naming the field can go by the
+last field of the path rather than by a key.
 
 A field is keyed by the name its json tag gives it, or by its Go name without one, whatever the transport. Behind a gRPC
 handler, a use case input without json tags reports `TodoID`; tag the field `json:"id"` to report the name the proto
@@ -371,7 +384,7 @@ type UpdateTask struct {
 ```go
 	if x.CompletedAt != nil {
 		if _, err := model.NewCompletedAt(*x.CompletedAt); err != nil {
-			errs.Add("completed_at", err)
+			errs.Add(validator.Field("completed_at"), err)
 		}
 	}
 ```
@@ -448,15 +461,15 @@ field goes by its JSON name), and a test fails unless the two find the same fiel
 
 | Request              | Validator                        | ns/op | B/op | allocs/op |
 |----------------------|----------------------------------|------:|-----:|----------:|
-| valid                | kanna-validator                  |    18 |    0 |         0 |
-| valid                | go-playground/validator v10.30.5 |   539 |  432 |        18 |
-| seven fields broken  | kanna-validator                  |   231 | 1032 |        16 |
-| seven fields broken  | go-playground/validator v10.30.5 |   989 | 2210 |        51 |
+| valid                | kanna-validator                  |    19 |    0 |         0 |
+| valid                | go-playground/validator v10.30.5 |   553 |  432 |        18 |
+| seven fields broken  | kanna-validator                  |   468 | 1816 |        25 |
+| seven fields broken  | go-playground/validator v10.30.5 |   995 | 2210 |        51 |
 
 The median of 10 runs with Go 1.27.3 on an Apple M5 Pro. The generated `Validate` checks a valid request about 30 times
-as fast as go-playground, and a broken one about 4 times as fast with 53% fewer bytes and 69% fewer allocations. A
-valid request costs the `if`s and allocates nothing; a broken one costs the errors it reports, each built with its code
-and params.
+as fast as go-playground, and a broken one about twice as fast with 18% fewer bytes and 51% fewer allocations. A valid
+request costs the `if`s and allocates nothing; a broken one costs the errors it reports, each built with its code,
+params, and path.
 
 ```sh
 make bench                       # run it once

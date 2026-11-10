@@ -2,7 +2,6 @@ package validator
 
 import (
 	"bytes"
-	"cmp"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -13,15 +12,107 @@ import (
 	"strings"
 )
 
-// Base is the field of an error that concerns the struct as a whole rather than
-// one of its fields, as in Rails.
-const Base = "base"
+// Base is the path of an error that concerns the struct as a whole rather than
+// one of its fields, "base" as in Rails.
+var Base = Field("base")
+
+// Path is where in a value an error is: the fields, map keys, and slice
+// indexes leading to it. Field starts one, and Index and Key go on with it. Its
+// zero value is the value itself.
+type Path struct {
+	segments []Segment
+}
+
+// Segment is one step of a path.
+type Segment struct {
+	Kind SegmentKind
+
+	// Name is the field's JSON name, or the key spelled as encoding/json names
+	// it in an object, for a FieldSegment and a KeySegment.
+	Name string
+
+	// Index is the element's index, for an IndexSegment.
+	Index int
+}
+
+// SegmentKind is what a segment of a path steps into.
+type SegmentKind int
+
+// The kinds of segments.
+const (
+	// FieldSegment is a field of a struct.
+	FieldSegment SegmentKind = iota + 1
+	// KeySegment is the value under a key of a map.
+	KeySegment
+	// IndexSegment is an element of a slice or an array.
+	IndexSegment
+)
+
+// Field returns the path through the fields named name and then names, each by
+// its JSON name, such as Field("address", "zip") for "address.zip".
+func Field(name string, names ...string) Path {
+	segments := make([]Segment, 1, 1+len(names))
+	segments[0] = Segment{Kind: FieldSegment, Name: name}
+	for _, n := range names {
+		segments = append(segments, Segment{Kind: FieldSegment, Name: n})
+	}
+	return Path{segments: segments}
+}
+
+// Index returns the path to element i of the slice at p, such as "tags[2]".
+func Index(p Path, i int) Path {
+	return p.with(Segment{Kind: IndexSegment, Index: i})
+}
+
+// Key returns the path to the value under key in the map at p, such as
+// "labels.primary": a map is a JSON object, so its keys are spelled as the
+// names of an object are, as DecodeJSON reports them.
+func Key[K comparable](p Path, key K) Path {
+	return p.with(Segment{Kind: KeySegment, Name: keyName(key)})
+}
+
+// Segments returns the steps of p, in order.
+func (p Path) Segments() []Segment {
+	return slices.Clone(p.segments)
+}
+
+// String spells p with JSON names, as FieldError.Field does, such as
+// "items[2].sku".
+func (p Path) String() string {
+	return spell(p.segments)
+}
+
+func (p Path) with(s Segment) Path {
+	return Path{segments: append(slices.Clip(p.segments), s)}
+}
+
+func spell(segments []Segment) string {
+	if len(segments) == 1 && segments[0].Kind != IndexSegment {
+		return segments[0].Name
+	}
+	var b strings.Builder
+	for i, s := range segments {
+		switch {
+		case s.Kind == IndexSegment:
+			b.WriteString("[" + strconv.Itoa(s.Index) + "]")
+		case i > 0:
+			b.WriteString("." + s.Name)
+		default:
+			b.WriteString(s.Name)
+		}
+	}
+	return b.String()
+}
 
 // FieldError is a broken rule together with the field it broke on.
 type FieldError struct {
 	// Field is the path to the field, spelled with JSON names, such as
-	// "address.zip" or "tags[2]"; or Base.
+	// "address.zip" or "tags[2]"; or "base".
 	Field string
+
+	// Segments are the steps of the path, which tell a field from a map key:
+	// "notes.first" may be either.
+	Segments []Segment
 
 	// Err is the rule's error. It is usually Coded; one that is not reports the
 	// code "invalid", Rails' catch-all.
@@ -69,52 +160,55 @@ func (e FieldError) Unwrap() error {
 // were found. A generated Validate method returns it through Err.
 type Errors []FieldError
 
-// Add records err as broken on field. A nil err is ignored, so that the result
-// of a rule can be passed as it is. Errors, such as what another Validate
-// returns, move under field, as Nest moves them.
-func (e *Errors) Add(field string, err error) {
+// Add records err as broken at p. A nil err is ignored, so that the result of
+// a rule can be passed as it is. Errors, such as what another Validate
+// returns, move under p, as Nest moves them.
+func (e *Errors) Add(p Path, err error) {
 	if _, ok := errors.AsType[Errors](err); ok {
-		e.Nest(field, err)
+		e.Nest(p, err)
 		return
 	}
 	if err != nil {
-		*e = append(*e, FieldError{Field: field, Err: err})
+		*e = append(*e, FieldError{Field: p.String(), Segments: p.Segments(), Err: err})
 	}
 }
 
-// Nest records what validating the value of field reported. The fields of
-// Errors move under field ("address" and "zip" make "address.zip"), and an
-// empty field leaves them where they are, as for an embedded struct. Any other
-// error is recorded on field itself, or on Base when field is empty. A nil err
-// is ignored.
-func (e *Errors) Nest(field string, err error) {
+// Nest records what validating the value at p reported. The errors of Errors
+// move under p ("address" and "zip" make "address.zip"), and the zero Path
+// leaves them where they are, as for an embedded struct. Any other error is
+// recorded at p itself, or at Base for the zero Path. A nil err is ignored.
+func (e *Errors) Nest(p Path, err error) {
 	if err == nil {
 		return
 	}
 	nested, ok := errors.AsType[Errors](err)
 	if !ok {
-		e.Add(cmp.Or(field, Base), err)
+		if len(p.segments) == 0 {
+			p = Base
+		}
+		e.Add(p, err)
 		return
 	}
 	for _, fe := range nested {
-		path := fe.Field
-		if field != "" {
-			path = field + "." + fe.Field
+		if _, ok := errors.AsType[Errors](fe.Err); ok {
+			e.Nest(Path{segments: slices.Concat(p.segments, fe.Segments)}, fe.Err)
+			continue
 		}
-		e.Add(path, fe.Err)
+		*e = append(*e, FieldError{Field: join(p, fe), Segments: slices.Concat(p.segments, fe.Segments), Err: fe.Err})
 	}
 }
 
-// Index returns the path to element i of the slice at field, such as "tags[2]".
-func Index(field string, i int) string {
-	return field + "[" + strconv.Itoa(i) + "]"
-}
-
-// Key returns the path to the value under key in the map at field, such as
-// "labels.primary": a map is a JSON object, so its keys are spelled as the
-// names of an object are, as DecodeJSON reports them.
-func Key[K comparable](field string, key K) string {
-	return field + "." + keyName(key)
+// join spells the path of fe under p.
+func join(p Path, fe FieldError) string {
+	switch {
+	case len(p.segments) == 0:
+		return fe.Field
+	case fe.Field == "":
+		return p.String()
+	case len(fe.Segments) > 0 && fe.Segments[0].Kind == IndexSegment:
+		return p.String() + fe.Field
+	}
+	return p.String() + "." + fe.Field
 }
 
 // SortedKeys returns the keys of m in the order of their names in a path, as

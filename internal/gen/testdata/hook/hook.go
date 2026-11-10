@@ -11,7 +11,7 @@ type Signup struct {
 
 func (s Signup) validate(errs *validator.Errors) {
 	if s.Email == "admin@example.com" {
-		errs.Add("email", validator.Fail("reserved"))
+		errs.Add(validator.Field("email"), validator.Fail("reserved"))
 	}
 }
 
@@ -25,7 +25,7 @@ type Audit struct {
 
 func (a *Audit) validate(errs *validator.Errors) {
 	if a.By == "root" {
-		errs.Add("by", validator.Fail("reserved"))
+		errs.Add(validator.Field("by"), validator.Fail("reserved"))
 	}
 }
 

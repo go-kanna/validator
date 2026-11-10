@@ -51,6 +51,6 @@ type Address struct {
 // fields at once: an admin must sign up with a company address.
 func (x CreateUserRequest) validate(errs *validator.Errors) {
 	if x.Role == "admin" && !strings.HasSuffix(x.Email.String(), "@example.com") {
-		errs.Add("email", validator.Fail("corp_domain"))
+		errs.Add(validator.Field("email"), validator.Fail("corp_domain"))
 	}
 }

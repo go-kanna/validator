@@ -1,12 +1,12 @@
 package validator
 
 import (
-	"cmp"
 	"encoding"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"io"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -41,6 +41,7 @@ func DecodeJSON(r io.Reader, v interface{ Validate() error }) error {
 	var d decoding
 	dec := jsontext.NewDecoder(r)
 	err := json.UnmarshalDecode(dec, v, json.WithUnmarshalers(json.JoinUnmarshalers(
+		json.UnmarshalFromFunc(d.track),
 		// In the order encoding/json/v2 prefers the methods.
 		json.UnmarshalFromFunc(d.unmarshalJSONFrom),
 		json.UnmarshalFromFunc(d.unmarshalJSON),
@@ -65,7 +66,7 @@ func DecodeJSON(r io.Reader, v interface{ Validate() error }) error {
 	}
 
 	var found Errors
-	found.Nest("", v.Validate())
+	found.Nest(Path{}, v.Validate())
 	for _, fe := range found {
 		if !slices.ContainsFunc(d.rejected, func(path string) bool { return within(fe.Field, path) }) {
 			d.errs = append(d.errs, fe)
@@ -152,6 +153,26 @@ type decoding struct {
 	// rejected holds the path of each of errs, with "" rather than Base for
 	// the top-level value.
 	rejected []string
+
+	// maps tells, by the depth of the decoder's stack a value starts at,
+	// whether the value being read there is a map, whose names are keys
+	// rather than fields.
+	maps []bool
+}
+
+// track keeps whether the value dec is about to read is a map, and leaves the
+// reading to the rest. The values around it were tracked as they started.
+func (d *decoding) track(dec *jsontext.Decoder, v any) error {
+	depth := dec.StackDepth()
+	if kind, n := dec.StackIndex(depth); kind == jsontext.KindBeginObject && n%2 == 0 {
+		return errors.ErrUnsupported // a map key
+	}
+	t := reflect.TypeOf(v)
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	d.maps = append(d.maps[:min(depth, len(d.maps))], t.Kind() == reflect.Map)
+	return errors.ErrUnsupported
 }
 
 func (d *decoding) unmarshalJSONFrom(dec *jsontext.Decoder, u json.UnmarshalerFrom) error {
@@ -200,9 +221,13 @@ func (d *decoding) record(dec *jsontext.Decoder, err error) error {
 	if _, ok := errors.AsType[Coded](err); !ok {
 		return err // nil, or for encoding/json/v2 to report with the value's position
 	}
-	path := pathOf(dec)
-	d.errs.Add(cmp.Or(path, Base), err)
-	d.rejected = append(d.rejected, path)
+	path := d.pathOf(dec)
+	at := path
+	if len(path.segments) == 0 {
+		at = Base
+	}
+	d.errs.Add(at, err)
+	d.rejected = append(d.rejected, path.String())
 	return nil
 }
 
@@ -220,27 +245,28 @@ func handles(dec *jsontext.Decoder, v any) bool {
 	return kind != jsontext.KindBeginObject || n%2 == 1
 }
 
-// pathOf spells the path to the value dec has just read with JSON names, such
-// as "address.zip" or "tags[1]", or returns "" for the top-level value.
+// pathOf returns the path to the value dec has just read, such as
+// "address.zip" or "tags[1]", or the zero Path for the top-level value.
 //
 // A token of a JSON pointer does not tell an array index from an object name,
 // so the kind of each level comes from the decoder's stack, which has one level
-// per token.
-func pathOf(dec *jsontext.Decoder) string {
-	var path string
+// per token, and whether an object is a map from what track kept.
+func (d *decoding) pathOf(dec *jsontext.Decoder) Path {
+	var p Path
 	level := 1
 	for token := range dec.StackPointer().Tokens() {
 		switch kind, _ := dec.StackIndex(level); {
 		case kind == jsontext.KindBeginArray:
-			path += "[" + token + "]"
-		case path == "":
-			path = token
+			i, _ := strconv.Atoi(token)
+			p = Index(p, i)
+		case level-1 < len(d.maps) && d.maps[level-1]:
+			p = p.with(Segment{Kind: KeySegment, Name: token})
 		default:
-			path += "." + token
+			p = p.with(Segment{Kind: FieldSegment, Name: token})
 		}
 		level++
 	}
-	return path
+	return p
 }
 
 // within reports whether field is path or lies under it. Every field lies

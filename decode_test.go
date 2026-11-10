@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -71,10 +72,10 @@ func (p *period) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
 func (p period) Validate() error {
 	var errs validator.Errors
 	if p.From == 0 {
-		errs.Add("from", validator.Blank())
+		errs.Add(validator.Field("from"), validator.Blank())
 	}
 	if p.To == 0 {
-		errs.Add("to", validator.Blank())
+		errs.Add(validator.Field("to"), validator.Blank())
 	}
 	return errs.Err()
 }
@@ -84,13 +85,14 @@ type address struct {
 }
 
 type signUp struct {
-	Email   email            `json:"email"`
-	Name    string           `json:"name"`
-	Role    role             `json:"role"`
-	Stay    period           `json:"stay"`
-	Address address          `json:"address"`
-	Backups []email          `json:"backups"`
-	Labels  map[string]email `json:"labels"`
+	Email   email               `json:"email"`
+	Name    string              `json:"name"`
+	Role    role                `json:"role"`
+	Stay    period              `json:"stay"`
+	Address address             `json:"address"`
+	Backups []email             `json:"backups"`
+	Labels  map[string]email    `json:"labels"`
+	Groups  map[string]*address `json:"groups"`
 }
 
 // Validate stands in for what kanna-validator generates for
@@ -98,15 +100,15 @@ type signUp struct {
 func (s signUp) Validate() error {
 	var errs validator.Errors
 	if s.Email.v == "" {
-		errs.Add("email", validator.Blank())
+		errs.Add(validator.Field("email"), validator.Blank())
 	}
 	if s.Name == "" {
-		errs.Add("name", validator.Blank())
+		errs.Add(validator.Field("name"), validator.Blank())
 	}
 	if s.Role == "" {
-		errs.Add("role", validator.Blank())
+		errs.Add(validator.Field("role"), validator.Blank())
 	}
-	errs.Nest("stay", s.Stay.Validate())
+	errs.Nest(validator.Field("stay"), s.Stay.Validate())
 	return errs.Err()
 }
 
@@ -169,6 +171,39 @@ func TestDecodeJSON(t *testing.T) {
 	}
 }
 
+// The segments of a rejection tell the keys of a map from the fields of a
+// struct, which its JSON does not.
+func TestDecodeJSON_Segments(t *testing.T) {
+	t.Parallel()
+
+	in := `{"email":"a@example.com","name":"kanna","role":"admin","stay":{"from":1,"to":2},"address":{"zip":"x"},` +
+		`"backups":["y"],"labels":{"zip":"z"},"groups":{"home.office":{"zip":"w"}}}`
+	err := validator.DecodeJSON(strings.NewReader(in), new(signUp))
+	errs, ok := errors.AsType[validator.Errors](err)
+	if !ok {
+		t.Fatalf("DecodeJSON() error = %v, want Errors", err)
+	}
+
+	field := func(name string) validator.Segment {
+		return validator.Segment{Kind: validator.FieldSegment, Name: name}
+	}
+	key := func(name string) validator.Segment { return validator.Segment{Kind: validator.KeySegment, Name: name} }
+	want := map[string][]validator.Segment{
+		"address.zip":            {field("address"), field("zip")},
+		"backups[0]":             {field("backups"), {Kind: validator.IndexSegment, Index: 0}},
+		"labels.zip":             {field("labels"), key("zip")},
+		"groups.home.office.zip": {field("groups"), key("home.office"), field("zip")},
+	}
+	if len(errs) != len(want) {
+		t.Fatalf("Errors = %v, want %d of them", errs, len(want))
+	}
+	for _, fe := range errs {
+		if w, ok := want[fe.Field]; !ok || !slices.Equal(fe.Segments, w) {
+			t.Errorf("segments of %s = %v, want %v", fe.Field, fe.Segments, w)
+		}
+	}
+}
+
 func TestDecodeJSON_KeepsDecoding(t *testing.T) {
 	t.Parallel()
 
@@ -193,10 +228,10 @@ type mailbox struct {
 func (m mailbox) Validate() error {
 	var errs validator.Errors
 	if m.Email.v == "" {
-		errs.Add("email", validator.Blank())
+		errs.Add(validator.Field("email"), validator.Blank())
 	}
 	if m.EmailBackup.v == "" {
-		errs.Add("email_backup", validator.Blank())
+		errs.Add(validator.Field("email_backup"), validator.Blank())
 	}
 	return errs.Err()
 }
@@ -230,14 +265,14 @@ func TestDecodeJSON_TopLevel(t *testing.T) {
 			name: "rejected while decoding",
 			v:    new(role),
 			in:   `"root"`,
-			want: validator.Errors{{Field: validator.Base, Err: validator.Inclusion()}},
+			want: validator.Errors{{Field: "base", Err: validator.Inclusion()}},
 		},
 		{
 			// Nothing was set, so whatever Validate finds is left out.
 			name: "with Validate",
 			v:    new(period),
 			in:   `{"from":2,"to":1}`,
-			want: validator.Errors{{Field: validator.Base, Err: validator.Fail("backwards")}},
+			want: validator.Errors{{Field: "base", Err: validator.Fail("backwards")}},
 		},
 	}
 

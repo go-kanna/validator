@@ -54,28 +54,28 @@ func (x CreateUserRequest) Validate() error {
 	var errs validator.Errors
 
 	if x.Name == "" {
-		errs.Add("name", validator.Blank())
+		errs.Add(validator.Field("name"), validator.Blank())
 	} else {
 		if utf8.RuneCountInString(x.Name) > 50 {
-			errs.Add("name", validator.TooLong(50))
+			errs.Add(validator.Field("name"), validator.TooLong(50))
 		}
 	}
 
 	if x.Age < 18 {
-		errs.Add("age", validator.GreaterThanOrEqualTo(18))
+		errs.Add(validator.Field("age"), validator.GreaterThanOrEqualTo(18))
 	}
 	// ...
 
 	for i := range x.Tags {
 		if utf8.RuneCountInString(x.Tags[i]) > 20 {
-			errs.Add(validator.Index("tags", i), validator.TooLong(20))
+			errs.Add(validator.Index(validator.Field("tags"), i), validator.TooLong(20))
 		}
 	}
 
 	if x.Address == (Address{}) {
-		errs.Add("address", validator.Blank())
+		errs.Add(validator.Field("address"), validator.Blank())
 	} else {
-		errs.Nest("address", x.Address.Validate())
+		errs.Nest(validator.Field("address"), x.Address.Validate())
 	}
 	// ...
 
@@ -116,7 +116,8 @@ $ go generate ./...
 | タグ | 対象 | コード | パラメータ |
 |---|---|---|---|
 | `required` | ゼロ値を持つものすべて | `blank` | |
-| `min`, `max`, `len` | 文字列（文字数で数える）、スライス、マップ | `too_short`, `too_long`, `wrong_length` | `count` |
+| `min`, `max`, `len` | 文字列（文字数で数える） | `too_short`, `too_long`, `wrong_length` | `count` |
+| `min`, `max`, `len` | スライス、マップ（要素の数で数える） | `too_few`, `too_many`, `wrong_count` | `count` |
 | `gt`, `gte`, `lt`, `lte`, `eq`, `ne` | 数値 | `greater_than`, `greater_than_or_equal_to`, `less_than`, ..., `other_than` | `count` |
 | `oneof=a b 'c d'` | 文字列、整数 | `inclusion` | |
 | `eqfield=Field` | 同じ型のフィールド、またはそのポインタ | `confirmation` | `attribute`: 相手のフィールドの JSON 名 |
@@ -126,7 +127,7 @@ $ go generate ./...
 | `omitempty` | ゼロ値を持つものすべて | ゼロ値には、後に続くルールを適用しない | |
 | `dive` | スライス、配列、マップ | 後に続くルールを各要素に適用する。マップでは各値に適用する | |
 
-文字数は、go-playground と同じく rune で数えます。`e` と結合用のアクセントで書いた `é` は 2、家族の絵文字 👨‍👩‍👧 は 5 です。`pattern=` は、Go の `regexp.MatchString` や JSON Schema の `pattern` と同じく、文字列のどこかに一致すれば通します。`pattern=\d{3}` は `"a123b"` を通すので、全体に一致させるには `^` と `$` を書きます。
+Rails はコレクションの長さも文字列と同じコードで報告しますが、スライスとマップの長さには別のコードを出すので、文言で文字数ではなく要素の数を言えます。文字数は、go-playground と同じく rune で数えます。`e` と結合用のアクセントで書いた `é` は 2、家族の絵文字 👨‍👩‍👧 は 5 です。`pattern=` は、Go の `regexp.MatchString` や JSON Schema の `pattern` と同じく、文字列のどこかに一致すれば通します。`pattern=\d{3}` は `"a123b"` を通すので、全体に一致させるには `^` と `$` を書きます。
 
 go-playground との違い:
 
@@ -159,21 +160,21 @@ go-playground との違い:
 ```go
 func (x CreateUserRequest) validate(errs *validator.Errors) {
 	if x.Role == "admin" && x.Age < 21 {
-		errs.Add("age", validator.Fail("too_young_for_admin"))
+		errs.Add(validator.Field("age"), validator.Fail("too_young_for_admin"))
 	}
 }
 ```
 
-構造体全体に関するエラーは、Rails と同じく `validator.Base`（`"base"`）の下に置きます。`Add` に、ほかの `Validate` が返したものなどの `Errors` を渡すと、`Nest` と同じく、その 1 つずつをパスの下に移します。
+パスは `validator.Path` です。`validator.Field("address", "zip")` はフィールドを JSON 名で辿り、`validator.Index` と `validator.Key` は、`validator.Key(validator.Field("labels"), k)` のように、そこから要素やマップの値に進みます。構造体全体に関するエラーは、Rails と同じく `validator.Base`（`"base"`）の下に置きます。`Add` に、ほかの `Validate` が返したものなどの `Errors` を渡すと、`Nest` と同じく、その 1 つずつをパスの下に移します。`items[2].sku` のように要素の下のフィールドに置くときは、自分の `Errors` を作り、`validator.Index(validator.Field("items"), 2)` の下にネストします。
 
-kanna-validator は、生成するときに、フックがエラーを置くパスを検査します。対象は、渡された `Errors` の `Add` と `Nest` の第 1 引数のうち、定数のものと、定数に `validator.Index` や `validator.Key` を使ったものです。パスは、構造体のエラーの名前と同じ読み方で辿ります。フィールドはそのエラーが置かれる名前で、要素は `[0]` で、マップのキーは `.` の後で辿り、どこで終わっても、`base` で終わってもかまいません。どう読んでも何も指さないパスがあれば、生成を止めます:
+kanna-validator は、生成するときに、フックがエラーを置くパスを検査します。対象は、渡された `Errors` の `Add` と `Nest` の第 1 引数のうち、定数を渡した `validator.Field`、`validator.Base`、`validator.Path{}` と、それに `validator.Index` や `validator.Key` を使ったものです。パスは、フィールドをそのエラーが置かれる名前で辿り、どこで終わっても、`base` で終わってもかまいません。何も指さないパスがあれば、生成を止めます:
 
 ```text
 user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserRequest has no field "aeg"
   did you mean "age"?
 ```
 
-`validator.Key` が書くキーは `.` を含みうるので、マップの先は見ません。kanna-validator が `Validate` を書かない型と、インターフェースの先も、何を報告するかはその `Validate` 次第なので見ません。そのような型を JSON 名なしで埋め込んでいれば、その階層ではどの名前も通します。`Add("")` も生成を止めます。構造体全体のエラーは `validator.Base` に置くからです。`Nest("")` は、埋め込み構造体と同じく、ネストしたものを構造体の階層に置くので通します。`validator.Index("items", i) + ".sku"` のように実行時に組み立てるパスは検査しません。
+`validator.Field` に渡す名前は 1 つずつが 1 つのフィールドなので、`validator.Field("address.zip")` は `address.zip` という名前のフィールドを指し、`validator.Field("address", "zip")` と書くようヒントを出します。kanna-validator が `Validate` を書かない型と、インターフェースの先は、何を報告するかはその `Validate` 次第なので見ません。そのような型を JSON 名なしで埋め込んでいれば、その階層ではどの名前も通します。`Add(validator.Path{})` も生成を止めます。構造体全体のエラーは `validator.Base` に置くからです。`Nest(validator.Path{})` は、埋め込み構造体と同じく、ネストしたものを構造体の階層に置くので通します。`validator.Field(name)` のように実行時にしか分からない名前で組み立てるパスは検査しません。
 
 ## エラー
 
@@ -186,6 +187,8 @@ user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserReques
   "confirm": [{"error": "confirmation", "attribute": "password"}]
 }
 ```
+
+それぞれの `FieldError` は、パスを上のキーである `Field` と、`Segments` の両方で持ちます。`Segments` は、フィールド（`validator.FieldSegment`）とマップのキー（`validator.KeySegment`）と添字（`validator.IndexSegment`）を見分けます。キーはリクエストが送ってきたものそのままで、`labels.first_note` はフィールドと同じ形に綴られます。`Segments` を見れば、フィールドを名指す文言は、キーではなくパスの最後のフィールドで名付けられます。
 
 フィールドのキーは、トランスポートが何であっても、json タグが与える名前か、タグがなければ Go の名前です。gRPC ハンドラの裏側にある、json タグのないユースケースの入力は `TodoID` と報告します。proto で宣言された名前で報告するには、フィールドに `json:"id"` タグを付けてください。protoc-gen-go が生成するメッセージには、proto のフィールド名を持つ json タグが最初から付いています。
 
@@ -271,7 +274,7 @@ type UpdateTask struct {
 ```go
 	if x.CompletedAt != nil {
 		if _, err := model.NewCompletedAt(*x.CompletedAt); err != nil {
-			errs.Add("completed_at", err)
+			errs.Add(validator.Field("completed_at"), err)
 		}
 	}
 ```
@@ -331,12 +334,12 @@ warning: no struct is marked //kanna:validate in example.com/app/user
 
 | リクエスト | バリデータ | ns/op | B/op | allocs/op |
 |---|---|---:|---:|---:|
-| 有効 | kanna-validator | 18 | 0 | 0 |
-| 有効 | go-playground/validator v10.30.5 | 539 | 432 | 18 |
-| 7 フィールドが不正 | kanna-validator | 231 | 1032 | 16 |
-| 7 フィールドが不正 | go-playground/validator v10.30.5 | 989 | 2210 | 51 |
+| 有効 | kanna-validator | 19 | 0 | 0 |
+| 有効 | go-playground/validator v10.30.5 | 553 | 432 | 18 |
+| 7 フィールドが不正 | kanna-validator | 468 | 1816 | 25 |
+| 7 フィールドが不正 | go-playground/validator v10.30.5 | 995 | 2210 | 51 |
 
-Apple M5 Pro 上の Go 1.27.3 で 10 回実行した中央値です。生成された `Validate` は、有効なリクエストを go-playground の約 30 倍の速さでチェックします。不正なリクエストは約 4 倍の速さで、バイト数を 53%、アロケーション回数を 69% 減らしてチェックします。有効なリクエストのコストは `if` の分だけで、アロケーションはありません。不正なリクエストのコストは報告するエラーの分で、エラーはそれぞれコードとパラメータとともに作られます。
+Apple M5 Pro 上の Go 1.27.3 で 10 回実行した中央値です。生成された `Validate` は、有効なリクエストを go-playground の約 30 倍の速さでチェックします。不正なリクエストは約 2 倍の速さで、バイト数を 18%、アロケーション回数を 51% 減らしてチェックします。有効なリクエストのコストは `if` の分だけで、アロケーションはありません。不正なリクエストのコストは報告するエラーの分で、エラーはそれぞれコードとパラメータとパスとともに作られます。
 
 ```sh
 make bench                       # run it once

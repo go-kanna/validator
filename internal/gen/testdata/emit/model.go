@@ -21,10 +21,11 @@ type Point struct{ X, Y int }
 type Item struct{ SKU string }
 
 func (i Item) Validate() error {
+	var errs validator.Errors
 	if i.SKU == "" {
-		return validator.Errors{{Field: "sku", Err: validator.Blank()}}
+		errs.Add(validator.Field("sku"), validator.Blank())
 	}
-	return nil
+	return errs.Err()
 }
 
 // Span validates itself and knows when it is empty.

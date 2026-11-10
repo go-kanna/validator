@@ -78,7 +78,7 @@ func TestGenerated(t *testing.T) {
 				`"grid[0]":[{"error":"blank"}],"grid[1]":[{"error":"blank"}],` +
 				`"address.zip":[{"error":"blank"}],` +
 				`"billing":[{"error":"blank"}],` +
-				`"items":[{"error":"too_short","count":1}],` +
+				`"items":[{"error":"too_few","count":1}],` +
 				`"count":[{"error":"blank"}],` +
 				`"list":[{"error":"blank"}],` +
 				// Inclusion once: the enum's Validate is not asked again.
@@ -98,7 +98,7 @@ func TestGenerated(t *testing.T) {
 				`"age":[{"error":"less_than_or_equal_to","count":130}],` +
 				`"quantity":[{"error":"less_than_or_equal_to","count":1000}],` +
 				`"nickname":[{"error":"too_short","count":2}],` +
-				`"tags":[{"error":"too_long","count":5}],` +
+				`"tags":[{"error":"too_many","count":5}],` +
 				`"tags[0]":[{"error":"blank"}],"tags[1]":[{"error":"too_long","count":20}]}`,
 		},
 		{
@@ -167,7 +167,7 @@ func TestGenerated(t *testing.T) {
 				r.Tree = emit.Tree{"a": {"b": nil}}
 			},
 			want: `{"opt_age":[{"error":"greater_than_or_equal_to","count":1}],` +
-				`"opt_tags":[{"error":"too_short","count":2}],` +
+				`"opt_tags":[{"error":"too_few","count":2}],` +
 				`"span":[{"error":"inverted"}],` +
 				`"picks[1]":[{"error":"blank"}],` +
 				`"by_point.{1 0}.sku":[{"error":"blank"}]}`,
@@ -450,6 +450,27 @@ func TestGenerated_MapOfUnorderedKeys(t *testing.T) {
 		if got := r.Validate(); got == nil || got.Error() != want {
 			t.Fatalf("Validate() = %v, want %s", got, want)
 		}
+	}
+}
+
+// The segments of an error tell the key of a map, whose name may look like
+// anything, from the fields around it.
+func TestGenerated_Segments(t *testing.T) {
+	t.Parallel()
+
+	r := validRequest()
+	r.ByPoint = map[emit.Point]emit.Item{{X: 1}: {}}
+	errs, ok := errors.AsType[validator.Errors](r.Validate())
+	if !ok || len(errs) != 1 {
+		t.Fatalf("Validate() = %v, want one error", r.Validate())
+	}
+	want := []validator.Segment{
+		{Kind: validator.FieldSegment, Name: "by_point"},
+		{Kind: validator.KeySegment, Name: "{1 0}"},
+		{Kind: validator.FieldSegment, Name: "sku"},
+	}
+	if !slices.Equal(errs[0].Segments, want) {
+		t.Errorf("segments = %v, want %v", errs[0].Segments, want)
 	}
 }
 

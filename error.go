@@ -79,19 +79,29 @@ type number interface {
 }
 
 // The built-in rules report the errors below, each named after the Rails error
-// it stands for.
+// it stands for, but for the lengths of a slice or a map, which Rails reports
+// as it reports those of a string.
 
 // Blank reports a required value left at its zero value.
 func Blank() *Error { return Fail("blank") }
 
-// TooShort reports a length below count.
+// TooShort reports a string of fewer than count characters.
 func TooShort(count int) *Error { return withCount("too_short", count) }
 
-// TooLong reports a length above count.
+// TooLong reports a string of more than count characters.
 func TooLong(count int) *Error { return withCount("too_long", count) }
 
-// WrongLength reports a length other than count.
+// WrongLength reports a string of other than count characters.
 func WrongLength(count int) *Error { return withCount("wrong_length", count) }
+
+// TooFew reports a slice or a map of fewer than count elements.
+func TooFew(count int) *Error { return withCount("too_few", count) }
+
+// TooMany reports a slice or a map of more than count elements.
+func TooMany(count int) *Error { return withCount("too_many", count) }
+
+// WrongCount reports a slice or a map of other than count elements.
+func WrongCount(count int) *Error { return withCount("wrong_count", count) }
 
 // GreaterThan reports a number that is not greater than count.
 // N is any integer or floating-point type, or one defined on it.

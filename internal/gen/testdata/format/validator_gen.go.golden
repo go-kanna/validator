@@ -13,16 +13,16 @@ func (x Contact) Validate() error {
 	var errs validator.Errors
 
 	if x.Email == "" {
-		errs.Add("email", validator.Blank())
+		errs.Add(validator.Field("email"), validator.Blank())
 	} else {
-		errs.Add("email", rule.Email(x.Email))
+		errs.Add(validator.Field("email"), rule.Email(x.Email))
 	}
 
 	if x.Website != nil {
-		errs.Add("website", rule.URL(*x.Website))
+		errs.Add(validator.Field("website"), rule.URL(*x.Website))
 	}
 
-	errs.Add("id", rule.UUID(string(x.ID)))
+	errs.Add(validator.Field("id"), rule.UUID(string(x.ID)))
 
 	return errs.Err()
 }
