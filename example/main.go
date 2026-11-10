@@ -55,6 +55,11 @@ func main() {
 			title: "Malformed JSON",
 			body:  `{"name":`,
 		},
+		{
+			// The error says where and why, but not what was sent.
+			title: "A string for a number",
+			body:  `{"name":"Kanna","age":"thirty"}`,
+		},
 	}
 
 	for _, r := range requests {
@@ -74,7 +79,11 @@ func main() {
 			}
 			fmt.Fprintf(os.Stdout, "422 Unprocessable Entity\n%s\n\n", body)
 		default:
-			fmt.Fprintf(os.Stdout, "400 Bad Request: %v\n\n", err)
+			body, err := json.MarshalIndent(map[string]error{"error": err}, "", "  ")
+			if err != nil {
+				panic(err)
+			}
+			fmt.Fprintf(os.Stdout, "400 Bad Request\n%s\n\n", body)
 		}
 	}
 }
