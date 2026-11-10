@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/gabriel-vasile/mimetype v1.4.16 // indirect
-	github.com/go-kanna/internal v0.0.32-0.20261110225331-9db3b5eb96a2 // indirect
+	github.com/go-kanna/internal v0.0.32-0.20261110233612-ddbef3ce5f4c // indirect
 	github.com/go-playground/locales v0.14.2 // indirect
 	github.com/go-playground/universal-translator v0.18.2 // indirect
 	github.com/leodido/go-urn v1.5.0 // indirect
