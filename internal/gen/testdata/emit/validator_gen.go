@@ -62,6 +62,12 @@ func (x Request) Validate() error {
 		errs.Add("quantity", validator.LessThanOrEqualTo[uint16](1000))
 	}
 
+	if x.Shade != "" {
+		if x.Shade != "light blue" && x.Shade != "red" {
+			errs.Add("shade", validator.Inclusion())
+		}
+	}
+
 	if !(x.Score > 0) {
 		errs.Add("score", validator.GreaterThan[float64](0))
 	}

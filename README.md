@@ -164,6 +164,10 @@ Where it differs from go-playground:
 - `oneof` on an enum of kanna-value lists the values of its constants, of those it exports for an enum of another
   package, which is all that is loaded of it for certain. A value that is none of them, a typo of one say, stops
   generation, as the field could never hold it.
+- `oneof` separates its values with spaces, and a value with spaces is quoted in single quotes, as go-playground reads
+  `oneof='light blue' red`. A quote that encloses no whole value, as in `'red` or `it's`, stops generation, where
+  go-playground drops it and checks another value than the one written. A value cannot hold a single quote, nor a
+  comma, which separates the rules.
 
 `rule=Type` applies the rule of `Type` to the field's value, or to each element after `dive`. `Type` is a value type of
 [kanna-value](#with-kanna-value), known by the shape kanna-value gives it, whose constructor `NewType(T) (Type, error)`
