@@ -3,6 +3,7 @@ package validator_test
 import (
 	"maps"
 	"testing"
+	"time"
 
 	"github.com/go-kanna/validator"
 )
@@ -48,6 +49,13 @@ func TestBuiltInErrors(t *testing.T) {
 			wantParams: map[string]any{"count": uint8(130)},
 		},
 		{name: "EqualTo", err: validator.EqualTo(1), wantCode: "equal_to", wantParams: map[string]any{"count": 1}},
+		// A time.Duration counts as it is written in a tag.
+		{
+			name:       "a time.Duration",
+			err:        validator.GreaterThanOrEqualTo(90 * time.Second),
+			wantCode:   "greater_than_or_equal_to",
+			wantParams: map[string]any{"count": "1m30s"},
+		},
 		{name: "OtherThan", err: validator.OtherThan(1), wantCode: "other_than", wantParams: map[string]any{"count": 1}},
 		{name: "Inclusion", err: validator.Inclusion(), wantCode: "inclusion"},
 		{
@@ -83,6 +91,7 @@ func TestError_Error(t *testing.T) {
 	}{
 		{name: "code only", err: validator.Fail("corp_domain"), want: "validator: corp_domain"},
 		{name: "a param", err: validator.TooLong(50), want: "validator: too_long (count=50)"},
+		{name: "a time.Duration", err: validator.LessThan(time.Second), want: "validator: less_than (count=1s)"},
 		{
 			name: "params in key order",
 			err:  validator.FailWith("between", map[string]any{"min": 1, "max": 9}),

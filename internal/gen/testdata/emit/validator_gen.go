@@ -4,9 +4,9 @@ package emit
 
 import (
 	"maps"
-	"math"
 	"regexp"
 	"slices"
+	"time"
 	"unicode/utf8"
 
 	"github.com/go-kanna/validator"
@@ -63,6 +63,12 @@ func (x Request) Validate() error {
 		errs.Add("quantity", validator.LessThanOrEqualTo[uint16](1000))
 	}
 
+	if x.Shade != "" {
+		if x.Shade != "light blue" && x.Shade != "red" {
+			errs.Add("shade", validator.Inclusion())
+		}
+	}
+
 	if !(x.Score > 0) {
 		errs.Add("score", validator.GreaterThan[float64](0))
 	}
@@ -72,14 +78,6 @@ func (x Request) Validate() error {
 	}
 	if !(x.Ratio <= 1) {
 		errs.Add("ratio", validator.LessThanOrEqualTo[float32](1))
-	}
-
-	if x.Weight == 0 || math.IsNaN(x.Weight) {
-		errs.Add("weight", validator.OtherThan[float64](0))
-	}
-
-	if x.Factor == 1 || math.IsNaN(float64(x.Factor)) {
-		errs.Add("factor", validator.OtherThan[float32](1))
 	}
 
 	if x.Role == "" {
@@ -234,8 +232,7 @@ func (x Request) Validate() error {
 		}
 	}
 
-	for _, k := range validator.SortedKeys(x.ByPoint) {
-		v := x.ByPoint[k]
+	for k, v := range x.ByPoint {
 		errs.Nest(validator.Key("by_point", k), v.Validate())
 	}
 
@@ -263,13 +260,19 @@ func (x Request) Validate() error {
 		}
 	}
 
-	if utf8.RuneCountInString(string(x.Stage)) > 6 {
-		errs.Add("stage", validator.TooLong(6))
+	if x.Timeout != 0 {
+		if x.Timeout < time.Second {
+			errs.Add("timeout", validator.GreaterThanOrEqualTo(time.Second))
+		}
+		if x.Timeout > 90*time.Minute {
+			errs.Add("timeout", validator.LessThanOrEqualTo(90*time.Minute))
+		}
 	}
-	if x.Stage != "draft" && x.Stage != "review" {
-		errs.Add("stage", validator.Inclusion())
-	} else {
-		errs.Nest("stage", x.Stage.Validate())
+
+	if x.Backoff != nil {
+		if *x.Backoff != time.Duration(0) && *x.Backoff != 1500*time.Millisecond {
+			errs.Add("backoff", validator.Inclusion())
+		}
 	}
 
 	errs.Nest("", x.Audit.Validate())

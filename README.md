@@ -121,7 +121,7 @@ The tags are go-playground/validator's; the codes and params are those of Rails'
 | `required`                           | anything with a zero value            | `blank`                                                                    |                                    |
 | `min`, `max`, `len`                  | strings (in characters), slices, maps | `too_short`, `too_long`, `wrong_length`                                    | `count`                            |
 | `gt`, `gte`, `lt`, `lte`, `eq`, `ne` | numbers                               | `greater_than`, `greater_than_or_equal_to`, `less_than`, ..., `other_than` | `count`                            |
-| `oneof=a b c`                        | strings, integers                     | `inclusion`                                                                |                                    |
+| `oneof=a b 'c d'`                    | strings, integers                     | `inclusion`                                                                |                                    |
 | `eqfield=Field`                      | a field of the same type, or a pointer to it | `confirmation`                                                      | `attribute`: the other's JSON name |
 | `pattern=regexp`                     | strings                               | `invalid`                                                                  |                                    |
 | `email`, `url`, `uuid`               | strings                               | `email`, `url`, `uuid`, from [go-kanna/value](#with-kanna-value)           |                                    |
@@ -151,6 +151,9 @@ Where it differs from go-playground:
   `Validate`, which is always called.
 - `min`, `max`, and `len` bound a length only. A number is compared with `gte`, `lte`, and `eq`, and `min=18` on one
   stops generation, saying so; each rule then means one thing, as `gte` on a string stops it too.
+- A `time.Duration` is compared with a duration as `time.ParseDuration` reads one, such as `gte=1s` or
+  `oneof=0 500ms`, rather than a number of nanoseconds, which stops generation. Its `count` is the duration as Go
+  prints it, the string `"1m30s"` for `gte=90s`, alike in the message and in either encoding/json.
 - `omitempty` comes first among the rules of its level, as it lets the zero value past those after it. The other rules
   of a level go in any order, but for `dive`, which applies those after it to each element, and `pattern=`, which takes
   the rest. On a pointer or an interface it stops generation, as it would do nothing: a nil one skips every rule but
@@ -169,6 +172,10 @@ Where it differs from go-playground:
   package, which is all that is loaded of it for certain. A value that is none of them, a typo of one say, stops
   generation, as the field could never hold it. The enum's `Validate` is called only on a value `oneof` accepts, so a
   value it rejects is reported `inclusion` once.
+- `oneof` separates its values with spaces, and a value with spaces is quoted in single quotes, as go-playground reads
+  `oneof='light blue' red`. A quote that encloses no whole value, as in `'red` or `it's`, stops generation, where
+  go-playground drops it and checks another value than the one written. A value cannot hold a single quote, nor a
+  comma, which separates the rules.
 
 `rule=Type` applies the rule of `Type` to the field's value, or to each element after `dive`. `Type` is a value type of
 [kanna-value](#with-kanna-value), known by the shape kanna-value gives it, whose constructor `NewType(T) (Type, error)`

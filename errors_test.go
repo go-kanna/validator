@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kanna/validator"
 )
@@ -284,6 +285,12 @@ func TestErrors_MarshalJSON(t *testing.T) {
 			name: "params in key order beside the code",
 			errs: validator.Errors{{Field: "confirm", Err: validator.FailWith("between", map[string]any{"min": 1, "max": 9})}},
 			want: `{"confirm":[{"error":"between","max":9,"min":1}]}`,
+		},
+		{
+			// encoding/json/v2 has no default encoding of a time.Duration.
+			name: "a time.Duration as it is written in a tag",
+			errs: validator.Errors{{Field: "timeout", Err: validator.GreaterThanOrEqualTo(time.Second)}},
+			want: `{"timeout":[{"error":"greater_than_or_equal_to","count":"1s"}]}`,
 		},
 		{
 			name: "a param that is a map, in key order too",

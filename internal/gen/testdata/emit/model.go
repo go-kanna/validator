@@ -79,6 +79,7 @@ type Request struct {
 	Age      int              `json:"age"       validate:"gte=18,lte=130"`
 	Level    uint8            `json:"level"     validate:"oneof=1 2 3"`
 	Quantity uint16           `json:"quantity"  validate:"lte=1000"`
+	Shade    string           `json:"shade"     validate:"omitempty,oneof='light blue' red"`
 	Score    float64          `json:"score"     validate:"gt=0"`
 	Ratio    float32          `json:"ratio"     validate:"gte=0,lte=1"`
 	Weight   float64          `json:"weight"    validate:"ne=0"`
@@ -117,6 +118,8 @@ type Request struct {
 	Due      *time.Time       `json:"due"       validate:"rule=schedule.Deadline"`
 	Shift    string           `json:"shift"     validate:"omitempty,rule=schedule.Shift"`
 	Shifts   []time.Time      `json:"shifts"    validate:"dive,rule=Since2000"`
+	Timeout  time.Duration    `json:"timeout"   validate:"omitempty,gte=1s,lte=90m"`
+	Backoff  *time.Duration   `json:"backoff"   validate:"oneof=0 1500ms"`
 	Stage    Stage            `json:"stage"     validate:"oneof=draft review,max=6"`
 	Audit
 }
