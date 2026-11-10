@@ -126,6 +126,20 @@ func TestGenerated(t *testing.T) {
 				`"extra":[{"error":"unreachable"}]}`,
 		},
 		{
+			name: "durations",
+			modify: func(r *emit.Request) {
+				backoff := 2 * time.Second
+				r.Timeout = 5 * time.Millisecond
+				r.Backoff = &backoff
+			},
+			want: `{"timeout":[{"error":"greater_than_or_equal_to","count":"1s"}],"backoff":[{"error":"inclusion"}]}`,
+		},
+		{
+			name:   "a duration above its bound",
+			modify: func(r *emit.Request) { r.Timeout = 2 * time.Hour },
+			want:   `{"timeout":[{"error":"less_than_or_equal_to","count":"1h30m0s"}]}`,
+		},
+		{
 			name: "values past omitempty",
 			modify: func(r *emit.Request) {
 				picks := []string{"a", ""}
