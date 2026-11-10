@@ -132,6 +132,10 @@ The tags are go-playground/validator's; the codes and params are those of Rails'
 | `omitempty`                          | anything with a zero value            | lets the zero value past the rules after it                                |                                    |
 | `dive`                               | slices, arrays, maps                  | applies the rules after it to each element, or each value of a map         |                                    |
 
+A length in characters counts runes, as go-playground does: `é` written as an `e` and a combining accent is 2, and the
+family emoji 👨‍👩‍👧 is 5. `pattern=` matches anywhere in the string, as Go's `regexp.MatchString` and JSON Schema's
+`pattern` do: `pattern=\d{3}` accepts `"a123b"`, so write `^` and `$` to match the whole of it.
+
 Where it differs from go-playground:
 
 - Every rule a field breaks is reported, not just the first. A value that fails `required` is the exception: it is
@@ -185,6 +189,15 @@ Where it differs from go-playground:
   `oneof='light blue' red`. A quote that encloses no whole value, as in `'red` or `it's`, stops generation, where
   go-playground drops it and checks another value than the one written. A value cannot hold a single quote, nor a
   comma, which separates the rules.
+- `url` takes an absolute URL with a host name, an address a request can reach. It reports `mailto:a@example.com`,
+  `javascript:alert(1)`, and `file:///etc/passwd`, which go-playground accepts as URIs with a scheme, and
+  `https://:80`, a port above 65535, and a space, as in `https://example.com/a b`, which go-playground accepts as well.
+  Neither checks the scheme: `javascript://example.com/%0Aalert(1)` passes both, so check it before writing a URL into
+  a link. The rule is go-kanna/value's, at the version your go.mod requires; v0.0.18 still passes a URL with a port but
+  no host name, a port above 65535, and a space.
+- `email` checks the syntax of a bare address as Go's net/mail reads one (RFC 5322), not whether its domain could exist:
+  `a@b`, `a@localhost`, `a@[127.0.0.1]`, and `a@-b.com` pass, where go-playground's own pattern rejects them. Whether
+  mail reaches an address is for a mail sent to it to find out.
 
 `rule=Type` applies the rule of `Type` to the field's value, or to each element after `dive`. `Type` is a value type of
 [kanna-value](#with-kanna-value), known by the shape kanna-value gives it, whose constructor `NewType(T) (Type, error)`
@@ -280,6 +293,11 @@ A field whose type rejects its value while decoding (a value type of kanna-value
 the rejection is reported at the field's path, alongside whatever the tags find in the rest. `json.Unmarshal` cannot do
 this; it stops at the first rejection, and does not say which field it came from. `DecodeJSON` decodes through
 encoding/json/v2, which matches names case-sensitively and rejects duplicate names.
+
+A name the struct has no field for is skipped, as encoding/json and encoding/json/v2 do by default, so a client may send
+what the server does not read yet. A misspelled name leaves its field unset, and `required` on it reports so:
+`{"titl":"x"}` is reported `title: blank`. `DecodeJSON` reads `r` to its end with no bound on its size: bound a request
+body with `http.MaxBytesReader` before passing it.
 
 What it decodes into has to validate itself, as a struct marked `//kanna:validate` does, one without a rule included:
 a struct left unmarked does not compile, rather than pass unchecked.
