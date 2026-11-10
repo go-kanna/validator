@@ -197,7 +197,9 @@ Where it differs from go-playground:
   no host name, a port above 65535, and a space.
 - `email` checks the syntax of a bare address as Go's net/mail reads one (RFC 5322), not whether its domain could exist:
   `a@b`, `a@localhost`, `a@[127.0.0.1]`, and `a@-b.com` pass, where go-playground's own pattern rejects them. Whether
-  mail reaches an address is for a mail sent to it to find out.
+  mail reaches an address is for a mail sent to it to find out. It rejects an address that net/mail would rewrite, such
+  as one with a quoted local part (`"a b"@example.com`), which go-playground accepts: the value is then always kept as
+  it was written.
 
 `rule=Type` applies the rule of `Type` to the field's value, or to each element after `dive`. `Type` is a value type of
 [kanna-value](#with-kanna-value), known by the shape kanna-value gives it, whose constructor `NewType(T) (Type, error)`
