@@ -89,6 +89,9 @@ func (x CreateUserRequest) Validate() error {
 Every rule is an `if` you can read and stop at in a debugger, and changing a tag changes the generated code, so a change
 of rules shows up in review.
 
+With two or more kanna generators, run them with [`go tool kanna gen`](https://github.com/go-kanna/kanna), which runs
+them in the order they need.
+
 A rule that does not exist or does not fit its field stops generation, rather than the first request that meets it:
 
 ```console
@@ -128,6 +131,10 @@ The tags are go-playground/validator's; the codes and params are those of Rails'
 | `rule=Type`, `rule=pkg.Type`         | what `Type` holds                     | the rule's own                                                             | the rule's own                     |
 | `omitempty`                          | anything with a zero value            | lets the zero value past the rules after it                                |                                    |
 | `dive`                               | slices, arrays, maps                  | applies the rules after it to each element, or each value of a map         |                                    |
+
+A length in characters counts runes, as go-playground does: `é` written as an `e` and a combining accent is 2, and the
+family emoji 👨‍👩‍👧 is 5. `pattern=` matches anywhere in the string, as Go's `regexp.MatchString` and JSON Schema's
+`pattern` do: `pattern=\d{3}` accepts `"a123b"`, so write `^` and `$` to match the whole of it.
 
 Where it differs from go-playground:
 
@@ -182,6 +189,17 @@ Where it differs from go-playground:
   `oneof='light blue' red`. A quote that encloses no whole value, as in `'red` or `it's`, stops generation, where
   go-playground drops it and checks another value than the one written. A value cannot hold a single quote, nor a
   comma, which separates the rules.
+- `url` takes an absolute URL with a host name, an address a request can reach. It reports `mailto:a@example.com`,
+  `javascript:alert(1)`, and `file:///etc/passwd`, which go-playground accepts as URIs with a scheme, and
+  `https://:80`, a port above 65535, and a space, as in `https://example.com/a b`, which go-playground accepts as well.
+  Neither checks the scheme: `javascript://example.com/%0Aalert(1)` passes both, so check it before writing a URL into
+  a link. The rule is go-kanna/value's, at the version your go.mod requires; v0.0.18 still passes a URL with a port but
+  no host name, a port above 65535, and a space.
+- `email` checks the syntax of a bare address as Go's net/mail reads one (RFC 5322), not whether its domain could exist:
+  `a@b`, `a@localhost`, `a@[127.0.0.1]`, and `a@-b.com` pass, where go-playground's own pattern rejects them. Whether
+  mail reaches an address is for a mail sent to it to find out. It rejects an address that net/mail would rewrite, such
+  as one with a quoted local part (`"a b"@example.com`), which go-playground accepts: the value is then always kept as
+  it was written.
 
 `rule=Type` applies the rule of `Type` to the field's value, or to each element after `dive`. `Type` is a value type of
 [kanna-value](#with-kanna-value), known by the shape kanna-value gives it, whose constructor `NewType(T) (Type, error)`
