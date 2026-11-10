@@ -263,10 +263,10 @@ not write, or an interface, is not checked, as what it reports is up to it; when
 any name at that level passes. `Add(validator.Path{})` stops generation too, as an error on the struct as a whole goes
 under `validator.Base`, while `Nest(validator.Path{})` keeps what it nests at the level of the struct, as for an
 embedded struct. A string constant in the place of the path, as in `Add("id", …)`, stops generation, with a hint to
-write `validator.Field("id")`, `validator.Field("address", "zip")` for `"address.zip"`, or `validator.Base` for `"base"`.
-A `Key` call whose key cannot be compared, a slice, map, or func, or an array or struct holding one, stops generation
-too, as it would panic at run time. A path made of names known only at run time, such as `validator.Field(name)`, or going on from one
-held in a variable, is not checked.
+write `validator.Field("id")`, `validator.Field("address", "zip")` for `"address.zip"`, or `validator.Base` for
+`"base"`. A `Key` call whose key cannot be compared, a slice, map, or func, or an array or struct holding one, stops
+generation too, as it would panic at run time. A path made of names known only at run time, such as
+`validator.Field(name)`, or going on from one held in a variable, is not checked.
 
 ## Errors
 
