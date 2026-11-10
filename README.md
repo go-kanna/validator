@@ -157,7 +157,9 @@ Where it differs from go-playground:
 - `omitempty` comes first among the rules of its level, as it lets the zero value past those after it. The other rules
   of a level go in any order, but for `dive`, which applies those after it to each element, and `pattern=`, which takes
   the rest. On a pointer or an interface it stops generation, as it would do nothing: a nil one skips every rule but
-  `required` already, which go-playground needs `omitempty` for.
+  `required` already, which go-playground needs `omitempty` for. With no rule after it at its level, it stops
+  generation too, but where the zero value would skip a `Validate` of the type, or the elements of an array:
+  `omitempty` alone on a `string`, or before `dive` on a slice or map, whose zero value has no elements, does nothing.
 - `omitempty` is the other side of `required`: it lets the zero value past, and nothing else. An empty slice or map
   that is not nil is no zero value, so `omitempty,min=1` reports `[]string{}`, as go-playground does. It is what
   encoding/json/v2 calls `omitzero`, not its `omitempty`, which leaves out an empty value.
@@ -168,6 +170,10 @@ Where it differs from go-playground:
 - A bound given twice at one level, such as `max=5,max=10`, and two bounds no value passes together, such as
   `gte=10,lte=5`, `gt=1,lte=1`, or `gte=18,eq=7`, stop generation: go-playground checks every one, so the field would
   fail whatever it held.
+- A rule the type decides alone stops generation: one every value passes, such as `min=0`, `gte=0` on a `uint`, or
+  `lte=255` on a `uint8`, checks nothing, and one none passes, such as `gt=255` on a `uint8`, fails whatever the field
+  holds. The ends are those of an integer type, with `int` and `uint` taken as 64 bits. A float has none, as it holds
+  the infinities, and a `time.Duration` may be negative, so `gte=0s` on one is a rule.
 - `oneof` on an enum of kanna-value lists the values of its constants, of those it exports for an enum of another
   package, which is all that is loaded of it for certain. A value that is none of them, a typo of one say, stops
   generation, as the field could never hold it. The enum's `Validate` is called only on a value `oneof` accepts, so a

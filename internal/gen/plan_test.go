@@ -286,6 +286,27 @@ func TestPlans_Errors(t *testing.T) {
 				"  remove omitempty",
 		},
 		{
+			name:  "omitempty with no rule after it",
+			field: "Note string `validate:\"omitempty\"`",
+			want: "omitempty does nothing without a rule after it: nothing checks string (field Note)\n" +
+				"  remove omitempty, or write after it the rules the zero value is to skip",
+		},
+		{
+			name:  "a bound every value passes",
+			field: "Count uint `validate:\"gte=0\"`",
+			want:  "gte=0 checks nothing: no uint is below 0 (field Count)\n  remove it",
+		},
+		{
+			name:  "a length every value passes",
+			field: "Name string `validate:\"min=0\"`",
+			want:  "min=0 checks nothing: no length is below 0 (field Name)\n  remove it",
+		},
+		{
+			name:  "a bound no value passes",
+			field: "Level uint8 `validate:\"gt=255\"`",
+			want:  "no uint8 passes gt=255: none is above 255 (field Level)",
+		},
+		{
 			name:  "eqfield after dive",
 			field: "Tags []string `validate:\"dive,eqfield=Other\"`\n\tOther string",
 			want:  "eqfield applies to the field itself, not to the elements after dive (field Tags)",
