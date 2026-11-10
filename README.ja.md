@@ -174,7 +174,7 @@ user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserReques
   did you mean "age"?
 ```
 
-`validator.Field` に渡す名前は 1 つずつが 1 つのフィールドなので、`validator.Field("address.zip")` は `address.zip` という名前のフィールドを指し、`validator.Field("address", "zip")` と書くようヒントを出します。kanna-validator が `Validate` を書かない型と、インターフェースの先は、何を報告するかはその `Validate` 次第なので見ません。そのような型を JSON 名なしで埋め込んでいれば、その階層ではどの名前も通します。`Add(validator.Path{})` も生成を止めます。構造体全体のエラーは `validator.Base` に置くからです。`Nest(validator.Path{})` は、埋め込み構造体と同じく、ネストしたものを構造体の階層に置くので通します。`validator.Field(name)` のように実行時にしか分からない名前で組み立てるパスと、変数に入れたパスから続けるパスは検査しません。
+`validator.Field` に渡す名前は 1 つずつが 1 つのフィールドなので、`validator.Field("address.zip")` は `address.zip` という名前のフィールドを指し、`validator.Field("address", "zip")` と書くようヒントを出します。kanna-validator が `Validate` を書かない型と、インターフェースの先は、何を報告するかはその `Validate` 次第なので見ません。そのような型を JSON 名なしで埋め込んでいれば、その階層ではどの名前も通します。`Add(validator.Path{})` も生成を止めます。構造体全体のエラーは `validator.Base` に置くからです。`Nest(validator.Path{})` は、埋め込み構造体と同じく、ネストしたものを構造体の階層に置くので通します。パスの位置に文字列の定数を書く（`Add("id", …)`）と生成を止め、`validator.Field("id")`、`"address.zip"` なら `validator.Field("address", "zip")`、`"base"` なら `validator.Base` と書くようヒントを出します。スライス、マップ、関数、またはそれを含む配列や構造体のように比較できない型のキーを `Key` に渡す呼び出しも、実行時に panic するので生成を止めます。`validator.Field(name)` のように実行時にしか分からない名前で組み立てるパスと、変数に入れたパスから続けるパスは検査しません。
 
 ## エラー
 
