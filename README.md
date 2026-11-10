@@ -280,7 +280,8 @@ order they first broke:
 Each `FieldError` holds its path both as `Field`, the key above, and as `Segments`, which tell a field
 (`validator.FieldSegment`) from a map key (`validator.KeySegment`) and an index (`validator.IndexSegment`): a key is
 whatever the request sent, which `labels.first_note` spells like a field, so a message naming the field can go by the
-last field of the path rather than by a key.
+last field of the path rather than by a key. `FieldNames` lists the names of the field segments alone, as a
+`[]string`, so a package such as go-kanna/i18n names the field through an interface without importing validator.
 
 A field is keyed by the name its json tag gives it, or by its Go name without one, whatever the transport. Behind a gRPC
 handler, a use case input without json tags reports `TodoID`; tag the field `json:"id"` to report the name the proto

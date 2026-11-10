@@ -268,6 +268,54 @@ func TestErrors_Segments(t *testing.T) {
 	}
 }
 
+// FieldNames keeps the fields of a path and leaves out its keys and indexes.
+func TestFieldError_FieldNames(t *testing.T) {
+	t.Parallel()
+
+	var item validator.Errors
+	item.Add(validator.Key(validator.Field("notes"), "first_note"), validator.TooLong(3))
+	var nested validator.Errors
+	nested.Nest(validator.Index(validator.Field("items"), 2), item.Err())
+
+	tests := []struct {
+		name string
+		err  validator.FieldError
+		want []string
+	}{
+		{name: "fields", err: fieldError(validator.Field("address", "zip")), want: []string{"address", "zip"}},
+		{
+			name: "keys and indexes",
+			err:  fieldError(validator.Index(validator.Key(validator.Field("groups"), "admin"), 0)),
+			want: []string{"groups"},
+		},
+		{name: "nested", err: nested[0], want: []string{"items", "notes"}},
+		{name: "no segments", err: validator.FieldError{Field: "name", Err: validator.Blank()}},
+	}
+	for _, tt := range tests {
+		got := tt.err.FieldNames()
+		if !slices.Equal(got, tt.want) || (tt.want == nil) != (got == nil) {
+			t.Errorf("%s: FieldNames() = %#v, want %#v", tt.name, got, tt.want)
+		}
+	}
+}
+
+// The names FieldNames returns are the caller's to change.
+func TestFieldError_FieldNames_Copy(t *testing.T) {
+	t.Parallel()
+
+	fe := fieldError(validator.Field("address", "zip"))
+	fe.FieldNames()[0] = "changed"
+	if got := fe.FieldNames(); !slices.Equal(got, []string{"address", "zip"}) {
+		t.Errorf("FieldNames() = %v after changing a returned slice, want [address zip]", got)
+	}
+}
+
+func fieldError(p validator.Path) validator.FieldError {
+	var errs validator.Errors
+	errs.Add(p, validator.Blank())
+	return errs[0]
+}
+
 func TestSortedKeys(t *testing.T) {
 	t.Parallel()
 
