@@ -85,6 +85,8 @@ func (x CreateUserRequest) Validate() error {
 
 どのルールも、読めて、デバッガで止めることもできる `if` 文です。タグを変更すると生成コードも変わるので、ルールの変更はレビューに現れます。
 
+kanna の生成器を 2 つ以上使うなら、必要な順に動かす [`go tool kanna gen`](https://github.com/go-kanna/kanna) で動かしてください。
+
 存在しないルールやフィールドに合わないルールは、それに当たる最初のリクエストを止めるのではなく、生成を止めます:
 
 ```console

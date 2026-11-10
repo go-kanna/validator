@@ -89,6 +89,9 @@ func (x CreateUserRequest) Validate() error {
 Every rule is an `if` you can read and stop at in a debugger, and changing a tag changes the generated code, so a change
 of rules shows up in review.
 
+With two or more kanna generators, run them with [`go tool kanna gen`](https://github.com/go-kanna/kanna), which runs
+them in the order they need.
+
 A rule that does not exist or does not fit its field stops generation, rather than the first request that meets it:
 
 ```console
