@@ -516,6 +516,30 @@ type Contact struct {
 	}
 }
 
+// A warning on a field still generates the struct's Validate.
+func TestCommand_GeneratesDespiteAWarning(t *testing.T) {
+	t.Parallel()
+
+	dir := writeModule(t, map[string]string{
+		"app.go": "package app\n\n//kanna:validate\ntype Signup struct {\n" +
+			"\tSlug string `json:\"slug\" validate:\"pattern=^[a-z]+$,max=20\"`\n}\n",
+	})
+	code, _, stderr := run(t, dir)
+	if code != cli.ExitOK {
+		t.Fatalf("run = %d, stderr %q", code, stderr)
+	}
+	if !strings.Contains(stderr, "./app.go:5:2: warning: pattern= takes the rest of the tag") {
+		t.Errorf("stderr = %q, want the warning on pattern=", stderr)
+	}
+	if strings.Contains(stderr, "no struct is marked") {
+		t.Errorf("stderr = %q, want no word of nothing being marked", stderr)
+	}
+	got := readFile(t, filepath.Join(dir, "validator_gen.go"))
+	if !strings.Contains(got, "func (x Signup) Validate() error") {
+		t.Errorf("validator_gen.go has no Validate for Signup:\n%s", got)
+	}
+}
+
 // A //kanna:validate a blank line keeps from its struct marks nothing, which
 // is told at the line.
 func TestCommand_WarnsOfALooseDirective(t *testing.T) {

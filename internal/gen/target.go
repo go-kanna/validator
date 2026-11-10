@@ -59,7 +59,7 @@ func targets(fset *token.FileSet, structs []scan.Struct) ([]target, []diag.Diag)
 		ds = checkTarget(fset, s, d)
 		hook, hookDiags := validation.Hook(fset, s)
 		diags = append(append(diags, ds...), hookDiags...)
-		if len(ds) == 0 && len(hookDiags) == 0 {
+		if !diag.HasErrors(ds) && !diag.HasErrors(hookDiags) {
 			found = append(found, target{Struct: s, hook: hook})
 		}
 	}

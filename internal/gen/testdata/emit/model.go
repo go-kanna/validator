@@ -63,6 +63,7 @@ type Request struct {
 	Age      int              `json:"age"       validate:"gte=18,lte=130"`
 	Level    uint8            `json:"level"     validate:"oneof=1 2 3"`
 	Quantity uint16           `json:"quantity"  validate:"lte=1000"`
+	Shade    string           `json:"shade"     validate:"omitempty,oneof='light blue' red"`
 	Score    float64          `json:"score"     validate:"gt=0"`
 	Ratio    float32          `json:"ratio"     validate:"gte=0,lte=1"`
 	Role     Role             `json:"role"      validate:"required,oneof=admin member"`

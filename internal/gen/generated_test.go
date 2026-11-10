@@ -97,6 +97,16 @@ func TestGenerated(t *testing.T) {
 				`"tags[0]":[{"error":"blank"}],"tags[1]":[{"error":"too_long","count":20}]}`,
 		},
 		{
+			name:   "a quoted value of oneof",
+			modify: func(r *emit.Request) { r.Shade = "light blue" },
+			want:   "",
+		},
+		{
+			name:   "a word of a quoted value of oneof",
+			modify: func(r *emit.Request) { r.Shade = "light" },
+			want:   `{"shade":[{"error":"inclusion"}]}`,
+		},
+		{
 			name: "elements",
 			modify: func(r *emit.Request) {
 				r.Matrix = [][]int{{1, -1}, {-2}}
