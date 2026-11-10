@@ -45,6 +45,27 @@ func TestErrors_Add(t *testing.T) {
 	}
 }
 
+// Errors added rather than nested still move under the field, every one of
+// them.
+func TestErrors_Add_Errors(t *testing.T) {
+	t.Parallel()
+
+	var inner validator.Errors
+	inner.Add("zip", validator.Blank())
+	inner.Add("city", validator.TooLong(3))
+
+	var errs validator.Errors
+	errs.Add("address", inner.Err())
+
+	want := validator.Errors{
+		{Field: "address.zip", Err: validator.Blank()},
+		{Field: "address.city", Err: validator.TooLong(3)},
+	}
+	if !equalErrors(errs, want) {
+		t.Errorf("Errors = %v, want %v", errs, want)
+	}
+}
+
 func TestErrors_Nest(t *testing.T) {
 	t.Parallel()
 
@@ -141,6 +162,18 @@ func TestPaths(t *testing.T) {
 	for _, tt := range tests {
 		if tt.got != tt.want {
 			t.Errorf("path = %q, want %q", tt.got, tt.want)
+		}
+	}
+}
+
+func TestSortedKeys(t *testing.T) {
+	t.Parallel()
+
+	m := map[span]int{{10, 20}: 0, {2, 3}: 0, {1, 5}: 0}
+	want := []span{{1, 5}, {10, 20}, {2, 3}}
+	for range 20 {
+		if got := validator.SortedKeys(m); !slices.Equal(got, want) {
+			t.Fatalf("SortedKeys() = %v, want %v", got, want)
 		}
 	}
 }

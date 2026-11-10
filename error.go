@@ -94,23 +94,29 @@ func TooLong(count int) *Error { return withCount("too_long", count) }
 func WrongLength(count int) *Error { return withCount("wrong_length", count) }
 
 // GreaterThan reports a number that is not greater than count.
+// N is any integer or floating-point type, or one defined on it.
 func GreaterThan[N number](count N) *Error { return withCount("greater_than", count) }
 
 // GreaterThanOrEqualTo reports a number below count.
+// N is any integer or floating-point type, or one defined on it.
 func GreaterThanOrEqualTo[N number](count N) *Error {
 	return withCount("greater_than_or_equal_to", count)
 }
 
 // LessThan reports a number that is not less than count.
+// N is any integer or floating-point type, or one defined on it.
 func LessThan[N number](count N) *Error { return withCount("less_than", count) }
 
 // LessThanOrEqualTo reports a number above count.
+// N is any integer or floating-point type, or one defined on it.
 func LessThanOrEqualTo[N number](count N) *Error { return withCount("less_than_or_equal_to", count) }
 
 // EqualTo reports a number other than count.
+// N is any integer or floating-point type, or one defined on it.
 func EqualTo[N number](count N) *Error { return withCount("equal_to", count) }
 
 // OtherThan reports a number equal to count.
+// N is any integer or floating-point type, or one defined on it.
 func OtherThan[N number](count N) *Error { return withCount("other_than", count) }
 
 // Inclusion reports a value outside the allowed set.

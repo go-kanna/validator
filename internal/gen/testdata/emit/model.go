@@ -39,6 +39,22 @@ func (s Span) Validate() error {
 	return nil
 }
 
+// Stage is an enum, which validates itself as kanna-value would.
+type Stage string
+
+const (
+	StageDraft  Stage = "draft"
+	StageReview Stage = "review"
+	StageDone   Stage = "done"
+)
+
+func (s Stage) Validate() error {
+	if s != StageDraft && s != StageReview && s != StageDone {
+		return validator.Inclusion()
+	}
+	return nil
+}
+
 // Checker is an interface whose values validate themselves.
 type Checker interface{ Validate() error }
 
@@ -66,6 +82,8 @@ type Request struct {
 	Shade    string           `json:"shade"     validate:"omitempty,oneof='light blue' red"`
 	Score    float64          `json:"score"     validate:"gt=0"`
 	Ratio    float32          `json:"ratio"     validate:"gte=0,lte=1"`
+	Weight   float64          `json:"weight"    validate:"ne=0"`
+	Factor   float32          `json:"factor"    validate:"ne=1"`
 	Role     Role             `json:"role"      validate:"required,oneof=admin member"`
 	Nickname *string          `json:"nickname"  validate:"min=2"`
 	Tags     []string         `json:"tags"      validate:"max=5,dive,required,max=20"`
@@ -102,6 +120,7 @@ type Request struct {
 	Shifts   []time.Time      `json:"shifts"    validate:"dive,rule=Since2000"`
 	Timeout  time.Duration    `json:"timeout"   validate:"omitempty,gte=1s,lte=90m"`
 	Backoff  *time.Duration   `json:"backoff"   validate:"oneof=0 1500ms"`
+	Stage    Stage            `json:"stage"     validate:"oneof=draft review,max=6"`
 	Audit
 }
 

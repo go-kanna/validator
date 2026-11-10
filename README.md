@@ -141,10 +141,14 @@ Where it differs from go-playground:
   does not. `eqfield` naming a pointer compares what it points to, as for the rules on one, and a nil one equals no
   value: a `*string` confirming another is reported when it is set and the other is not.
 - A floating-point NaN breaks every comparison it is held to: `gte=0` and `lte=100` both report it. The generated code
-  negates the requirement, `!(x >= 0)`, as `x < 0` would let NaN through.
+  negates the requirement, `!(x >= 0)`, as `x < 0` would let NaN through, and `ne=0` reports NaN too, which differs
+  from every number.
 - `pattern=` takes the rest of the tag, commas included, so it comes last; a rule after it, such as `,max=20`, is
   warned about as part of the expression. The tag value is a Go string literal, so a backslash is written `\\`; a tag
-  that does not unquote stops generation instead of being skipped in silence.
+  that does not unquote stops generation instead of being skipped in silence. So does a validate key that Go does not
+  read: `Validate:"required"`, `validate: "required"` with a space, or a second validate key in one tag.
+- `validate:"-"` stops generation: a field without a validate tag is left unchecked already, but for a type with
+  `Validate`, which is always called.
 - `min`, `max`, and `len` bound a length only. A number is compared with `gte`, `lte`, and `eq`, and `min=18` on one
   stops generation, saying so; each rule then means one thing, as `gte` on a string stops it too.
 - A `time.Duration` is compared with a duration as `time.ParseDuration` reads one, such as `gte=1s` or
@@ -166,7 +170,8 @@ Where it differs from go-playground:
   fail whatever it held.
 - `oneof` on an enum of kanna-value lists the values of its constants, of those it exports for an enum of another
   package, which is all that is loaded of it for certain. A value that is none of them, a typo of one say, stops
-  generation, as the field could never hold it.
+  generation, as the field could never hold it. The enum's `Validate` is called only on a value `oneof` accepts, so a
+  value it rejects is reported `inclusion` once.
 - `oneof` separates its values with spaces, and a value with spaces is quoted in single quotes, as go-playground reads
   `oneof='light blue' red`. A quote that encloses no whole value, as in `'red` or `it's`, stops generation, where
   go-playground drops it and checks another value than the one written. A value cannot hold a single quote, nor a
@@ -188,7 +193,9 @@ A field whose type has `Validate() error`, or is to have one (another `//kanna:v
 `//kanna:enum`, whose `Validate` kanna-value writes, a type validating itself by hand, an interface), is validated with
 it, and its errors are nested under the field: `address.zip`,
 `items[2].sku`, or `labels.primary` for a map, whose key is spelled as encoding/json names it, which a `String` method
-has no say in. Slices, arrays, and maps of such types are validated element by element without a `dive`.
+has no say in. Slices, arrays, and maps of such types are validated element by element without a `dive`. A map is
+walked in the order of its keys, or of their names for keys without an order, such as structs, so that its errors come
+in one order.
 A type with `Validate` through an embedded pointer or interface is validated only when that is not nil, as a nil pointer
 in a field is skipped. Generation stops when another package does not export what would have to be tested for nil.
 An embedded struct without a JSON name keeps its errors at the level of the struct embedding it, as encoding/json
@@ -206,7 +213,8 @@ func (x CreateUserRequest) validate(errs *validator.Errors) {
 }
 ```
 
-An error concerning the struct as a whole goes under `validator.Base`, `"base"`, as in Rails.
+An error concerning the struct as a whole goes under `validator.Base`, `"base"`, as in Rails. `Add` given `Errors`,
+such as what another `Validate` returned, moves each of them under the path, as `Nest` does.
 
 kanna-validator checks, as it generates, the paths the hook puts errors under: the first argument of `Add` and `Nest` on
 the `Errors` it is given, when it is a constant, or `validator.Index` or `validator.Key` of one. A path is read as the

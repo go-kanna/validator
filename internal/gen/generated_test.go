@@ -20,6 +20,7 @@ func validRequest() emit.Request {
 		Age:      30,
 		Level:    1,
 		Score:    1,
+		Weight:   1,
 		Role:     "member",
 		Tags:     []string{"go"},
 		Matrix:   [][]int{{0, 1}},
@@ -37,6 +38,7 @@ func validRequest() emit.Request {
 		ByName:   map[string]*emit.Item{"a": {SKU: "A1"}, "nil": nil},
 		Count:    1,
 		List:     []string{},
+		Stage:    emit.StageDraft,
 		By:       "admin",
 	}
 }
@@ -66,6 +68,7 @@ func TestGenerated(t *testing.T) {
 				`"age":[{"error":"greater_than_or_equal_to","count":18}],` +
 				`"level":[{"error":"inclusion"}],` +
 				`"score":[{"error":"greater_than","count":0}],` +
+				`"weight":[{"error":"other_than","count":0}],` +
 				`"role":[{"error":"blank"}],` +
 				`"code":[{"error":"invalid"}],` +
 				`"password":[{"error":"blank"}],` +
@@ -78,6 +81,8 @@ func TestGenerated(t *testing.T) {
 				`"items":[{"error":"too_short","count":1}],` +
 				`"count":[{"error":"blank"}],` +
 				`"list":[{"error":"blank"}],` +
+				// Inclusion once: the enum's Validate is not asked again.
+				`"stage":[{"error":"inclusion"}],` +
 				`"by":[{"error":"blank"}]}`,
 		},
 		{
@@ -386,6 +391,65 @@ func TestGenerated_FloatBounds(t *testing.T) {
 				t.Errorf("Validate() reported\n got  %s\n want %s", got, tt.want)
 			}
 		})
+	}
+}
+
+// ne reports NaN, which differs from every number, as every other comparison
+// does.
+func TestGenerated_OtherThanNaN(t *testing.T) {
+	t.Parallel()
+
+	r := validRequest()
+	r.Weight, r.Factor = math.NaN(), float32(math.NaN())
+	got, err := json.Marshal(r.Validate())
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	want := `{"weight":[{"error":"other_than","count":0}],"factor":[{"error":"other_than","count":1}]}`
+	if string(got) != want {
+		t.Errorf("Validate() reported\n got  %s\n want %s", got, want)
+	}
+}
+
+// An enum that oneof rejects is reported once, as the enum's Validate is not
+// asked about it, and one that oneof accepts is still asked.
+func TestGenerated_EnumNarrowedByOneOf(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		stage emit.Stage
+		want  string
+	}{
+		{stage: emit.StageDone, want: `{"stage":[{"error":"inclusion"}]}`},
+		{stage: "typo", want: `{"stage":[{"error":"inclusion"}]}`},
+		{stage: emit.StageReview, want: `null`},
+	}
+	for _, tt := range tests {
+		r := validRequest()
+		r.Stage = tt.stage
+		got, err := json.Marshal(r.Validate())
+		if err != nil {
+			t.Fatalf("Marshal() error = %v", err)
+		}
+		if string(got) != tt.want {
+			t.Errorf("Validate() of %q reported %s, want %s", tt.stage, got, tt.want)
+		}
+	}
+}
+
+// A map whose keys have no order reports its errors in the order of the
+// keys' names, the same on every run.
+func TestGenerated_MapOfUnorderedKeys(t *testing.T) {
+	t.Parallel()
+
+	r := validRequest()
+	r.ByPoint = map[emit.Point]emit.Item{{X: 3}: {}, {X: 1}: {}, {X: 2}: {}, {X: 1, Y: 1}: {}}
+	want := "validator: by_point.{1 0}.sku: blank; by_point.{1 1}.sku: blank; " +
+		"by_point.{2 0}.sku: blank; by_point.{3 0}.sku: blank"
+	for range 20 {
+		if got := r.Validate(); got == nil || got.Error() != want {
+			t.Fatalf("Validate() = %v, want %s", got, want)
+		}
 	}
 }
 

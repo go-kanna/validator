@@ -70,8 +70,13 @@ func (e FieldError) Unwrap() error {
 type Errors []FieldError
 
 // Add records err as broken on field. A nil err is ignored, so that the result
-// of a rule can be passed as it is.
+// of a rule can be passed as it is. Errors, such as what another Validate
+// returns, move under field, as Nest moves them.
 func (e *Errors) Add(field string, err error) {
+	if _, ok := errors.AsType[Errors](err); ok {
+		e.Nest(field, err)
+		return
+	}
 	if err != nil {
 		*e = append(*e, FieldError{Field: field, Err: err})
 	}
@@ -110,6 +115,27 @@ func Index(field string, i int) string {
 // names of an object are, as DecodeJSON reports them.
 func Key[K comparable](field string, key K) string {
 	return field + "." + keyName(key)
+}
+
+// SortedKeys returns the keys of m in the order of their names in a path, as
+// Key spells them. A generated Validate walks a map whose keys have no order
+// of their own, such as structs, in it, so that its errors keep one order.
+func SortedKeys[M ~map[K]V, K comparable, V any](m M) []K {
+	type named struct {
+		key  K
+		name string
+	}
+	all := make([]named, 0, len(m))
+	for k := range m {
+		all = append(all, named{key: k, name: keyName(k)})
+	}
+	slices.SortFunc(all, func(a, b named) int { return strings.Compare(a.name, b.name) })
+
+	keys := make([]K, len(all))
+	for i, n := range all {
+		keys[i] = n.key
+	}
+	return keys
 }
 
 // keyName spells key as Marshal names it in an object: a string as it is, and
