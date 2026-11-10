@@ -174,6 +174,24 @@ type Outer struct {
 	}
 }
 
+// A warning leaves the struct planned: only an error keeps its Validate from
+// being generated.
+func TestPlans_Warning(t *testing.T) {
+	t.Parallel()
+
+	src := "package test\n\n//kanna:validate\ntype Target struct {\n\t" +
+		"Slug string `validate:\"pattern=^[a-z]+$,max=20\"`\n}\n"
+	got, diags := plans(t, map[string]string{"test.go": src})
+	want := "test.go:5:2: warning: pattern= takes the rest of the tag as its regular expression, " +
+		"so \",max=20\" is part of it (field Slug)\n  write pattern= last, after the other rules"
+	if !slices.Equal(diags, []string{want}) {
+		t.Errorf("diagnostics = %q, want %q", diags, []string{want})
+	}
+	if want := []string{"Slug(Slug)"}; !slices.Equal(got["Target"], want) {
+		t.Errorf("plan of Target = %q, want %q", got["Target"], want)
+	}
+}
+
 func TestPlans_Errors(t *testing.T) {
 	t.Parallel()
 
@@ -191,12 +209,6 @@ func TestPlans_Errors(t *testing.T) {
 			name:  "unreadable tag",
 			field: "Zip string `validate:\"pattern=^\\d$\"`",
 			want:  `the validate tag is not a valid quoted string; write a backslash as \\ (field Zip)`,
-		},
-		{
-			name:  "a rule after pattern",
-			field: "Slug string `validate:\"pattern=^[a-z]+$,max=20\"`",
-			want: "test.go:5:2: warning: pattern= takes the rest of the tag as its regular expression, " +
-				"so \",max=20\" is part of it (field Slug)\n  write pattern= last, after the other rules",
 		},
 		{
 			name:  "a bound given twice",

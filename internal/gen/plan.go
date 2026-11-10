@@ -31,7 +31,8 @@ type fieldPlan struct {
 
 // plans decides what the Validate method of each target checks. rewritten
 // names the packages whose output this run rewrites. A target with a rule that
-// does not apply is left out, and said why.
+// does not apply is left out, and said why; one that is only warned about is
+// planned.
 func plans(fset *token.FileSet, targets []target, rewritten map[string]bool) ([]plan, []diag.Diag) {
 	writes := make([]*types.TypeName, len(targets))
 	for i, t := range targets {
@@ -46,7 +47,7 @@ func plans(fset *token.FileSet, targets []target, rewritten map[string]bool) ([]
 	for _, t := range targets {
 		fields, ds := p.Struct(t.Struct)
 		diags = append(diags, ds...)
-		if len(ds) > 0 {
+		if diag.HasErrors(ds) {
 			continue
 		}
 		pl := plan{target: t}
