@@ -278,13 +278,15 @@ The rejected value is never part of an error: errors end up in logs, and the val
 `validator.DecodeJSON` decodes a request body, validates it, and reports everything wrong with it in one go:
 
 ```go
+r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 var req user.CreateUserRequest
 if err := validator.DecodeJSON(r.Body, &req); err != nil {
 	if errs, ok := errors.AsType[validator.Errors](err); ok {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"errors": errs})
 		return
 	}
-	writeError(w, http.StatusBadRequest, err) // JSON that cannot be read at all
+	// A *validator.DecodeError: JSON that cannot be read at all.
+	writeJSON(w, http.StatusBadRequest, map[string]any{"error": err})
 	return
 }
 ```
@@ -301,6 +303,22 @@ body with `http.MaxBytesReader` before passing it.
 
 What it decodes into has to validate itself, as a struct marked `//kanna:validate` does, one without a rule included:
 a struct left unmarked does not compile, rather than pass unchecked.
+
+A request that cannot be read at all, rather than one that breaks a rule, fails with a `*validator.DecodeError`. It
+holds the JSON pointer to where reading failed and one of these reasons:
+
+| Reason           | The request                                                         |
+|------------------|---------------------------------------------------------------------|
+| `syntax`         | is not JSON, or is cut short                                        |
+| `trailing`       | goes on after the JSON value                                        |
+| `duplicate_name` | repeats a name in an object                                         |
+| `value`          | holds a value its Go type does not take, such as one out of range   |
+| `read`           | could not be read, such as when `http.MaxBytesReader` cuts it off   |
+
+It encodes as `{"pointer":"/age","reason":"value"}`, and its message reads
+`validator: cannot decode JSON at "/age": value`. Like the errors of the rules, neither holds the value, nor the Go type
+it was meant for, so either can answer the request as it is. The error of encoding/json/v2 behind it, which holds both,
+is for `errors.As`, and so is the `*http.MaxBytesError` of a body too large, for a handler that answers it with 413.
 
 ## With kanna-value
 

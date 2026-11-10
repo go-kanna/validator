@@ -6,9 +6,9 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
-	"fmt"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -27,24 +27,41 @@ import (
 // checking them would only report the absence of a value that was in fact
 // sent.
 //
-// The result is the Errors of both, or nil. Anything else fails with
-// encoding/json/v2's own error: JSON that is malformed, holds more than one
-// value, or does not fit the Go types, and a rejection that is not Coded or
-// that falls on a map key. Such a request cannot be read, rather than breaking
-// a rule.
+// The result is the Errors of both, or nil. A request that cannot be read,
+// rather than one that breaks a rule, fails with a *DecodeError instead: JSON
+// that is malformed, holds more than one value, or does not fit the Go types, a
+// rejection that is not Coded or that falls on a map key, and a failure to read
+// r.
 //
 // Decoding follows encoding/json/v2, which, unlike encoding/json, matches names
-// case-sensitively and rejects duplicate names.
+// case-sensitively, rejects duplicate names, and skips unknown names. r is read
+// to its end, so a limit on its size, such as http.MaxBytesReader sets, is the
+// caller's to set.
 func DecodeJSON(r io.Reader, v interface{ Validate() error }) error {
 	var d decoding
-	err := json.UnmarshalRead(r, v, json.WithUnmarshalers(json.JoinUnmarshalers(
+	dec := jsontext.NewDecoder(r)
+	err := json.UnmarshalDecode(dec, v, json.WithUnmarshalers(json.JoinUnmarshalers(
 		// In the order encoding/json/v2 prefers the methods.
 		json.UnmarshalFromFunc(d.unmarshalJSONFrom),
 		json.UnmarshalFromFunc(d.unmarshalJSON),
 		json.UnmarshalFromFunc(d.unmarshalText),
 	)))
+	if errors.Is(err, io.EOF) {
+		// There was no value at all.
+		return &DecodeError{Reason: ReasonSyntax, err: io.ErrUnexpectedEOF}
+	}
 	if err != nil {
-		return fmt.Errorf("validator: %w", err)
+		return decodeError(err)
+	}
+	switch _, err := dec.ReadToken(); {
+	case errors.Is(err, io.EOF):
+	case err == nil || errors.As(err, new(*jsontext.SyntacticError)):
+		if err == nil {
+			err = errTrailing
+		}
+		return &DecodeError{Reason: ReasonTrailing, err: err}
+	default:
+		return decodeError(err)
 	}
 
 	var found Errors
@@ -55,6 +72,76 @@ func DecodeJSON(r io.Reader, v interface{ Validate() error }) error {
 		}
 	}
 	return d.errs.Err()
+}
+
+// DecodeError is why DecodeJSON could not read a request. It says where and
+// why, but never what was sent or what Go type it was meant for, so that it can
+// answer the request as it is, in its message or encoded as JSON, unlike the
+// error it wraps.
+type DecodeError struct {
+	// Pointer is the JSON pointer to where reading failed, such as
+	// "/address/zip", or "" for the top-level value.
+	Pointer jsontext.Pointer `json:"pointer"`
+
+	Reason DecodeReason `json:"reason"`
+
+	// err is the error of encoding/json/v2, or of reading, behind it.
+	err error
+}
+
+// DecodeReason is what kind of request DecodeJSON could not read.
+type DecodeReason string
+
+// The reasons DecodeJSON could not read a request.
+const (
+	// ReasonSyntax is JSON that is malformed or cut short.
+	ReasonSyntax DecodeReason = "syntax"
+	// ReasonTrailing is anything after the JSON value but white space.
+	ReasonTrailing DecodeReason = "trailing"
+	// ReasonDuplicateName is a name an object already has.
+	ReasonDuplicateName DecodeReason = "duplicate_name"
+	// ReasonValue is a JSON value, or a name for a map key, that the Go type
+	// does not take: one of the wrong kind, such as a string for a struct, a
+	// number out of range, a string that is no time, or one a type rejects
+	// without a Coded error.
+	ReasonValue DecodeReason = "value"
+	// ReasonRead is a failure to read the request, such as one
+	// http.MaxBytesReader cuts off.
+	ReasonRead DecodeReason = "read"
+)
+
+// Error says why and where, such as
+// `validator: cannot decode JSON at "/address": value`. The pointer is quoted,
+// as the names in it come from the request.
+func (e *DecodeError) Error() string {
+	if e.Pointer == "" {
+		return "validator: cannot decode JSON: " + string(e.Reason)
+	}
+	return "validator: cannot decode JSON at " + strconv.Quote(string(e.Pointer)) + ": " + string(e.Reason)
+}
+
+// Unwrap returns the error behind e, which errors.As can tell apart, such as a
+// *json.SemanticError or an *http.MaxBytesError.
+func (e *DecodeError) Unwrap() error {
+	return e.err
+}
+
+var errTrailing = errors.New("JSON value after the top-level value")
+
+// decodeError tells why encoding/json/v2 failed with err. A SemanticError may
+// wrap a SyntacticError a type reported, but not the other way around.
+func decodeError(err error) *DecodeError {
+	if sem, ok := errors.AsType[*json.SemanticError](err); ok {
+		return &DecodeError{Pointer: sem.JSONPointer, Reason: ReasonValue, err: err}
+	}
+	if syn, ok := errors.AsType[*jsontext.SyntacticError](err); ok {
+		reason := ReasonSyntax
+		if errors.Is(syn.Err, jsontext.ErrDuplicateName) {
+			reason = ReasonDuplicateName
+		}
+		return &DecodeError{Pointer: syn.JSONPointer, Reason: reason, err: err}
+	}
+	return &DecodeError{Reason: ReasonRead, err: err}
 }
 
 // decoding calls the methods types decode themselves with, as encoding/json/v2

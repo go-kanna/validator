@@ -196,13 +196,15 @@ user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserReques
 `validator.DecodeJSON` は、リクエストボディをデコードしてバリデーションし、問題をすべてまとめて報告します:
 
 ```go
+r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 var req user.CreateUserRequest
 if err := validator.DecodeJSON(r.Body, &req); err != nil {
 	if errs, ok := errors.AsType[validator.Errors](err); ok {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"errors": errs})
 		return
 	}
-	writeError(w, http.StatusBadRequest, err) // JSON that cannot be read at all
+	// A *validator.DecodeError: JSON that cannot be read at all.
+	writeJSON(w, http.StatusBadRequest, map[string]any{"error": err})
 	return
 }
 ```
@@ -212,6 +214,18 @@ kanna-value の値オブジェクトのように、デコード中に型が値�
 構造体にフィールドのない名前は、encoding/json と encoding/json/v2 の既定と同じく読み飛ばします。サーバーがまだ読まないものをクライアントが送ってもよいようにするためです。綴りを誤った名前ではそのフィールドが設定されないままになり、`required` があればそれを報告します。`{"titl":"x"}` は `title: blank` と報告されます。`DecodeJSON` は `r` を大きさの制限なく終わりまで読みます。リクエストの本文は、渡す前に `http.MaxBytesReader` で制限してください。
 
 デコード先は、`//kanna:validate` を付けた構造体のように、自分を検証できる型でなければなりません。ルールのない構造体でも、付ければ検証できる型になります。付け忘れた構造体は、検証されずに通るのではなく、コンパイルが通りません。
+
+ルールを破ったのではなく、そもそも読めないリクエストは、`*validator.DecodeError` で失敗します。読めなかった場所の JSON ポインタと、次の理由のどれかを持ちます。
+
+| 理由 | リクエストが |
+|---|---|
+| `syntax` | JSON でない、または途中で切れている |
+| `trailing` | JSON の値の後にまだ続く |
+| `duplicate_name` | オブジェクトで名前を繰り返している |
+| `value` | Go の型が受け取らない値を持つ（範囲を超える数など） |
+| `read` | 読めなかった（`http.MaxBytesReader` が打ち切ったときなど） |
+
+JSON では `{"pointer":"/age","reason":"value"}` になり、メッセージは `validator: cannot decode JSON at "/age": value` です。ルールのエラーと同じく、どちらにも値も、値を入れるはずだった Go の型も含まれないので、どちらもそのままリクエストへの応答に使えます。両方を含む encoding/json/v2 のエラーは、`errors.As` で取り出せます。大きすぎる本文の `*http.MaxBytesError` も同じで、413 で応答したいハンドラはそれを見ます。
 
 ## kanna-value との連携
 
