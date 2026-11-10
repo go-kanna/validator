@@ -5,6 +5,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"time"
 )
 
 // Coded is an error that names the rule a value broke.
@@ -67,7 +68,10 @@ func (e *Error) Error() string {
 }
 
 // number is what a numeric rule compares against. The count it reports keeps
-// the type of the field it was checked on.
+// the type of the field it was checked on, but for a time.Duration, which it
+// reports as the duration's String, such as "1s": that reads the same in
+// Error, encoding/json, and encoding/json/v2, which has no way to encode a
+// time.Duration by default.
 type number interface {
 	~int | ~int8 | ~int16 | ~int32 | ~int64 |
 		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |
@@ -122,6 +126,9 @@ func Confirmation(attribute string) *Error {
 func Invalid() *Error { return Fail("invalid") }
 
 func withCount(code string, count any) *Error {
+	if d, ok := count.(time.Duration); ok {
+		count = d.String()
+	}
 	return &Error{code: code, key: "count", value: count}
 }
 
