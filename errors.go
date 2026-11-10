@@ -17,7 +17,7 @@ import (
 var Base = Field("base")
 
 // Path is where in a value an error is: the fields, map keys, and slice
-// indexes leading to it. Field starts one, and Index and Key go on with it. Its
+// indexes leading to it. Field starts one, and its methods go on with it. Its
 // zero value is the value itself.
 type Path struct {
 	segments []Segment
@@ -49,10 +49,18 @@ const (
 )
 
 // Field returns the path through the fields named name and then names, each by
-// its JSON name, such as Field("address", "zip") for "address.zip".
+// its JSON name, such as Field("address", "zip") for "address.zip". The
+// methods of Path go on with it.
 func Field(name string, names ...string) Path {
-	segments := make([]Segment, 1, 1+len(names))
-	segments[0] = Segment{Kind: FieldSegment, Name: name}
+	return Path{}.Field(name, names...)
+}
+
+// Field returns the path through the fields named name and then names below p,
+// such as Field("items").Index(2).Field("sku") for "items[2].sku".
+func (p Path) Field(name string, names ...string) Path {
+	segments := make([]Segment, len(p.segments), len(p.segments)+1+len(names))
+	copy(segments, p.segments)
+	segments = append(segments, Segment{Kind: FieldSegment, Name: name})
 	for _, n := range names {
 		segments = append(segments, Segment{Kind: FieldSegment, Name: n})
 	}
@@ -60,14 +68,15 @@ func Field(name string, names ...string) Path {
 }
 
 // Index returns the path to element i of the slice at p, such as "tags[2]".
-func Index(p Path, i int) Path {
+func (p Path) Index(i int) Path {
 	return p.with(Segment{Kind: IndexSegment, Index: i})
 }
 
 // Key returns the path to the value under key in the map at p, such as
 // "labels.primary": a map is a JSON object, so its keys are spelled as the
-// names of an object are, as DecodeJSON reports them.
-func Key[K comparable](p Path, key K) Path {
+// names of an object are, as DecodeJSON reports them. key is a key of the map,
+// of a type a map can have keys of.
+func (p Path) Key(key any) Path {
 	return p.with(Segment{Kind: KeySegment, Name: keyName(key)})
 }
 
@@ -248,14 +257,14 @@ func SortedKeys[M ~map[K]V, K comparable, V any](m M) []K {
 
 // keyName spells key as Marshal names it in an object: a string as it is, and
 // anything else as the key of a map, which a String method has no say in.
-func keyName[K comparable](key K) string {
-	switch k := any(key).(type) {
+func keyName(key any) string {
+	switch k := key.(type) {
 	case string:
 		return k
 	case int:
 		return strconv.Itoa(k)
 	}
-	b, err := json.Marshal(map[K]struct{}{key: {}})
+	b, err := json.Marshal(map[any]struct{}{key: {}})
 	if err != nil {
 		return fmt.Sprint(key)
 	}

@@ -108,10 +108,10 @@ func (x Request) Validate() error {
 	}
 	for i := range x.Tags {
 		if x.Tags[i] == "" {
-			errs.Add(validator.Index(validator.Field("tags"), i), validator.Blank())
+			errs.Add(validator.Field("tags").Index(i), validator.Blank())
 		} else {
 			if utf8.RuneCountInString(x.Tags[i]) > 20 {
-				errs.Add(validator.Index(validator.Field("tags"), i), validator.TooLong(20))
+				errs.Add(validator.Field("tags").Index(i), validator.TooLong(20))
 			}
 		}
 	}
@@ -119,7 +119,7 @@ func (x Request) Validate() error {
 	for i := range x.Matrix {
 		for i2 := range x.Matrix[i] {
 			if x.Matrix[i][i2] < 0 {
-				errs.Add(validator.Index(validator.Index(validator.Field("matrix"), i), i2), validator.GreaterThanOrEqualTo(0))
+				errs.Add(validator.Field("matrix").Index(i).Index(i2), validator.GreaterThanOrEqualTo(0))
 			}
 		}
 	}
@@ -127,7 +127,7 @@ func (x Request) Validate() error {
 	for _, k := range slices.Sorted(maps.Keys(x.Labels)) {
 		v := x.Labels[k]
 		if utf8.RuneCountInString(string(v)) > 10 {
-			errs.Add(validator.Key(validator.Field("labels"), k), validator.TooLong(10))
+			errs.Add(validator.Field("labels").Key(k), validator.TooLong(10))
 		}
 	}
 
@@ -175,7 +175,7 @@ func (x Request) Validate() error {
 
 	for i := range x.Grid {
 		if x.Grid[i] == (Point{}) {
-			errs.Add(validator.Index(validator.Field("grid"), i), validator.Blank())
+			errs.Add(validator.Field("grid").Index(i), validator.Blank())
 		}
 	}
 
@@ -191,13 +191,13 @@ func (x Request) Validate() error {
 		errs.Add(validator.Field("items"), validator.TooFew(1))
 	}
 	for i := range x.Items {
-		errs.Nest(validator.Index(validator.Field("items"), i), x.Items[i].Validate())
+		errs.Nest(validator.Field("items").Index(i), x.Items[i].Validate())
 	}
 
 	for _, k := range slices.Sorted(maps.Keys(x.ByName)) {
 		v := x.ByName[k]
 		if v != nil {
-			errs.Nest(validator.Key(validator.Field("by_name"), k), v.Validate())
+			errs.Nest(validator.Field("by_name").Key(k), v.Validate())
 		}
 	}
 
@@ -236,14 +236,14 @@ func (x Request) Validate() error {
 	if x.Picks != nil {
 		for i := range *x.Picks {
 			if (*x.Picks)[i] == "" {
-				errs.Add(validator.Index(validator.Field("picks"), i), validator.Blank())
+				errs.Add(validator.Field("picks").Index(i), validator.Blank())
 			}
 		}
 	}
 
 	for _, k := range validator.SortedKeys(x.ByPoint) {
 		v := x.ByPoint[k]
-		errs.Nest(validator.Key(validator.Field("by_point"), k), v.Validate())
+		errs.Nest(validator.Field("by_point").Key(k), v.Validate())
 	}
 
 	if x.DoneAt != nil {
@@ -266,7 +266,7 @@ func (x Request) Validate() error {
 
 	for i := range x.Shifts {
 		if _, err := schedule.NewSince2000(x.Shifts[i]); err != nil {
-			errs.Add(validator.Index(validator.Field("shifts"), i), err)
+			errs.Add(validator.Field("shifts").Index(i), err)
 		}
 	}
 
@@ -350,14 +350,14 @@ func (x Promoted) Validate() error {
 
 	for i := range x.List {
 		if x.List[i].Item != nil {
-			errs.Nest(validator.Index(validator.Field("list"), i), x.List[i].Validate())
+			errs.Nest(validator.Field("list").Index(i), x.List[i].Validate())
 		}
 	}
 
 	for _, k := range slices.Sorted(maps.Keys(x.Map)) {
 		v := x.Map[k]
 		if v.Item != nil {
-			errs.Nest(validator.Key(validator.Field("map"), k), v.Validate())
+			errs.Nest(validator.Field("map").Key(k), v.Validate())
 		}
 	}
 

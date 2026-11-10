@@ -71,7 +71,7 @@ func (x CreateUserRequest) Validate() error {
 
 	for i := range x.Tags {
 		if utf8.RuneCountInString(x.Tags[i]) > 20 {
-			errs.Add(validator.Index(validator.Field("tags"), i), validator.TooLong(20))
+			errs.Add(validator.Field("tags").Index(i), validator.TooLong(20))
 		}
 	}
 
@@ -240,17 +240,17 @@ func (x CreateUserRequest) validate(errs *validator.Errors) {
 }
 ```
 
-A path is a `validator.Path`: `validator.Field("address", "zip")` goes through fields by their JSON names, and
-`validator.Index` and `validator.Key` go on to an element or a map's value, as in
-`validator.Key(validator.Field("labels"), k)`. An error concerning the struct as a whole goes under `validator.Base`,
-`"base"`, as in Rails. `Add` given `Errors`, such as what another `Validate` returned, moves each of them under the path,
-as `Nest` does; a field under an element, such as `items[2].sku`, goes so, through `Errors` of its own nested under
-`validator.Index(validator.Field("items"), 2)`.
+A path is a `validator.Path`. `validator.Field("address", "zip")` makes one through fields by their JSON names, and the
+methods of `Path` extend it: `Index` to an element, `Key` to a map's value, and `Field` to the fields below, so
+`items[2].sku` is `validator.Field("items").Index(2).Field("sku")`. `Key` takes the map's key as it is, as in
+`validator.Field("labels").Key(k)`, and spells it the way encoding/json names the key. An error concerning the struct as
+a whole goes under `validator.Base`, `"base"`, as in Rails. `Add` given `Errors`, such as what another `Validate`
+returned, moves each of them under the path, as `Nest` does.
 
 kanna-validator checks, as it generates, the paths the hook puts errors under: the first argument of `Add` and `Nest` on
-the `Errors` it is given, when it is `validator.Field` of constants, `validator.Base`, `validator.Path{}`, or
-`validator.Index` or `validator.Key` of one. A path goes through fields by the names their errors go under, and may end
-at any of them, or in `base`. Generation stops at a path that names nothing:
+the `Errors` it is given, when it starts with `validator.Field` of constants, `validator.Base`, or `validator.Path{}`
+and goes on with `Index`, `Key`, or `Field` of constants. A path goes through fields by the names their errors go under,
+and may end at any of them, or in `base`. Generation stops at a path that names nothing:
 
 ```text
 user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserRequest has no field "aeg"
@@ -262,7 +262,8 @@ with a hint to write `validator.Field("address", "zip")`. What follows a value w
 not write, or an interface, is not checked, as what it reports is up to it; when one is embedded without a JSON name,
 any name at that level passes. `Add(validator.Path{})` stops generation too, as an error on the struct as a whole goes
 under `validator.Base`, while `Nest(validator.Path{})` keeps what it nests at the level of the struct, as for an
-embedded struct. A path made of names known only at run time, such as `validator.Field(name)`, is not checked.
+embedded struct. A path made of names known only at run time, such as `validator.Field(name)`, or going on from one
+held in a variable, is not checked.
 
 ## Errors
 
