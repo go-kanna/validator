@@ -6,6 +6,7 @@ import (
 	"maps"
 	"regexp"
 	"slices"
+	"time"
 	"unicode/utf8"
 
 	"github.com/go-kanna/validator"
@@ -256,6 +257,21 @@ func (x Request) Validate() error {
 	for i := range x.Shifts {
 		if _, err := schedule.NewSince2000(x.Shifts[i]); err != nil {
 			errs.Add(validator.Index("shifts", i), err)
+		}
+	}
+
+	if x.Timeout != 0 {
+		if x.Timeout < time.Second {
+			errs.Add("timeout", validator.GreaterThanOrEqualTo(time.Second))
+		}
+		if x.Timeout > 90*time.Minute {
+			errs.Add("timeout", validator.LessThanOrEqualTo(90*time.Minute))
+		}
+	}
+
+	if x.Backoff != nil {
+		if *x.Backoff != time.Duration(0) && *x.Backoff != 1500*time.Millisecond {
+			errs.Add("backoff", validator.Inclusion())
 		}
 	}
 

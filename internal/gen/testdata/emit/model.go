@@ -100,6 +100,8 @@ type Request struct {
 	Due      *time.Time       `json:"due"       validate:"rule=schedule.Deadline"`
 	Shift    string           `json:"shift"     validate:"omitempty,rule=schedule.Shift"`
 	Shifts   []time.Time      `json:"shifts"    validate:"dive,rule=Since2000"`
+	Timeout  time.Duration    `json:"timeout"   validate:"omitempty,gte=1s,lte=90m"`
+	Backoff  *time.Duration   `json:"backoff"   validate:"oneof=0 1500ms"`
 	Audit
 }
 

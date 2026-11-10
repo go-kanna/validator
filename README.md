@@ -147,6 +147,9 @@ Where it differs from go-playground:
   that does not unquote stops generation instead of being skipped in silence.
 - `min`, `max`, and `len` bound a length only. A number is compared with `gte`, `lte`, and `eq`, and `min=18` on one
   stops generation, saying so; each rule then means one thing, as `gte` on a string stops it too.
+- A `time.Duration` is compared with a duration as `time.ParseDuration` reads one, such as `gte=1s` or
+  `oneof=0 500ms`, rather than a number of nanoseconds, which stops generation. Its `count` is the duration as Go
+  prints it, the string `"1m30s"` for `gte=90s`, alike in the message and in either encoding/json.
 - `omitempty` comes first among the rules of its level, as it lets the zero value past those after it. The other rules
   of a level go in any order, but for `dive`, which applies those after it to each element, and `pattern=`, which takes
   the rest. On a pointer or an interface it stops generation, as it would do nothing: a nil one skips every rule but
