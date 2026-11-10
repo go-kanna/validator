@@ -116,7 +116,7 @@ $ go generate ./...
 | `required` | ゼロ値を持つものすべて | `blank` | |
 | `min`, `max`, `len` | 文字列（文字数で数える）、スライス、マップ | `too_short`, `too_long`, `wrong_length` | `count` |
 | `gt`, `gte`, `lt`, `lte`, `eq`, `ne` | 数値 | `greater_than`, `greater_than_or_equal_to`, `less_than`, ..., `other_than` | `count` |
-| `oneof=a b c` | 文字列、整数 | `inclusion` | |
+| `oneof=a b 'c d'` | 文字列、整数 | `inclusion` | |
 | `eqfield=Field` | 同じ型のフィールド、またはそのポインタ | `confirmation` | `attribute`: 相手のフィールドの JSON 名 |
 | `pattern=regexp` | 文字列 | `invalid` | |
 | `email`, `url`, `uuid` | 文字列 | `email`, `url`, `uuid`（[go-kanna/value](#kanna-value-との連携) のもの） | |

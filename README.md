@@ -121,7 +121,7 @@ The tags are go-playground/validator's; the codes and params are those of Rails'
 | `required`                           | anything with a zero value            | `blank`                                                                    |                                    |
 | `min`, `max`, `len`                  | strings (in characters), slices, maps | `too_short`, `too_long`, `wrong_length`                                    | `count`                            |
 | `gt`, `gte`, `lt`, `lte`, `eq`, `ne` | numbers                               | `greater_than`, `greater_than_or_equal_to`, `less_than`, ..., `other_than` | `count`                            |
-| `oneof=a b c`                        | strings, integers                     | `inclusion`                                                                |                                    |
+| `oneof=a b 'c d'`                    | strings, integers                     | `inclusion`                                                                |                                    |
 | `eqfield=Field`                      | a field of the same type, or a pointer to it | `confirmation`                                                      | `attribute`: the other's JSON name |
 | `pattern=regexp`                     | strings                               | `invalid`                                                                  |                                    |
 | `email`, `url`, `uuid`               | strings                               | `email`, `url`, `uuid`, from [go-kanna/value](#with-kanna-value)           |                                    |
