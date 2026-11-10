@@ -125,6 +125,20 @@ func (e FieldError) Path() string {
 	return e.Field
 }
 
+// FieldNames returns the names of the field segments of the path, in order,
+// leaving out map keys and indexes: "items[2].notes.first" gives items and
+// notes when first is a key. It returns nil without Segments. It lets a package
+// such as go-kanna/i18n name the field without importing validator.
+func (e FieldError) FieldNames() []string {
+	var names []string
+	for _, s := range e.Segments {
+		if s.Kind == FieldSegment {
+			names = append(names, s.Name)
+		}
+	}
+	return names
+}
+
 // Code returns the code of Err, or "invalid" when Err carries none.
 func (e FieldError) Code() string {
 	if c, ok := errors.AsType[Coded](e.Err); ok {

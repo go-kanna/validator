@@ -188,7 +188,7 @@ user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserReques
 }
 ```
 
-それぞれの `FieldError` は、パスを上のキーである `Field` と、`Segments` の両方で持ちます。`Segments` は、フィールド（`validator.FieldSegment`）とマップのキー（`validator.KeySegment`）と添字（`validator.IndexSegment`）を見分けます。キーはリクエストが送ってきたものそのままで、`labels.first_note` はフィールドと同じ形に綴られます。`Segments` を見れば、フィールドを名指す文言は、キーではなくパスの最後のフィールドで名付けられます。
+それぞれの `FieldError` は、パスを上のキーである `Field` と、`Segments` の両方で持ちます。`Segments` は、フィールド（`validator.FieldSegment`）とマップのキー（`validator.KeySegment`）と添字（`validator.IndexSegment`）を見分けます。キーはリクエストが送ってきたものそのままで、`labels.first_note` はフィールドと同じ形に綴られます。`Segments` を見れば、フィールドを名指す文言は、キーではなくパスの最後のフィールドで名付けられます。`FieldNames` は、フィールドの区切りの名前だけを `[]string` で並べるので、go-kanna/i18n のようなパッケージは、validator を import せずに、interface を通してフィールドを名付けられます。
 
 フィールドのキーは、トランスポートが何であっても、json タグが与える名前か、タグがなければ Go の名前です。gRPC ハンドラの裏側にある、json タグのないユースケースの入力は `TodoID` と報告します。proto で宣言された名前で報告するには、フィールドに `json:"id"` タグを付けてください。protoc-gen-go が生成するメッセージには、proto のフィールド名を持つ json タグが最初から付いています。
 
