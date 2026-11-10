@@ -556,6 +556,75 @@ func TestCommand_WarnsOfALooseDirective(t *testing.T) {
 	}
 }
 
+// A //kanna:validate on anything but a struct type is never read, which stops
+// the run at the line, and draws no word of nothing being marked.
+func TestCommand_RejectsAMisplacedDirective(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "a string type",
+			src:  "//kanna:validate\ntype Level string\n",
+			want: "a type other than a struct or an interface",
+		},
+		{name: "an alias", src: "//kanna:validate\ntype Level = string\n", want: "a type alias"},
+		{name: "an alias of a struct", src: "type S struct{}\n\n//kanna:validate\ntype T = S\n", want: "a type alias"},
+		{name: "an interface", src: "//kanna:validate\ntype V interface{ M() }\n", want: "an interface type"},
+		{name: "a variable", src: "//kanna:validate\nvar x int\n", want: "a variable"},
+		{name: "a function", src: "//kanna:validate\nfunc f() {}\n", want: "a function"},
+		{
+			name: "a method",
+			src:  "type S struct{}\n\n//kanna:validate\nfunc (S) m() {}\n",
+			want: "a method",
+		},
+		{
+			name: "a field",
+			src:  "type S struct {\n\t//kanna:validate\n\tName string\n}\n",
+			want: "a struct field",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := writeModule(t, map[string]string{"app.go": "package app\n\n" + tt.src})
+			code, _, stderr := run(t, dir)
+			want := "error: //kanna:validate marks a struct type, not " + tt.want + ", so nothing reads it\n" +
+				"  write it right above a struct type\n"
+			if code == cli.ExitOK || !strings.Contains(stderr, want) {
+				t.Errorf("run = %d, stderr %q; want failure with %q", code, stderr, want)
+			}
+			if strings.Contains(stderr, "no struct is marked") {
+				t.Errorf("stderr = %q, want no word of nothing being marked", stderr)
+			}
+			if _, err := os.Stat(filepath.Join(dir, "validator_gen.go")); err == nil {
+				t.Error("validator_gen.go is written")
+			}
+		})
+	}
+}
+
+// A struct type declared from another one is a struct type the mark is read on.
+func TestCommand_AcceptsADefinedStructType(t *testing.T) {
+	t.Parallel()
+
+	dir := writeModule(t, map[string]string{
+		"app.go": "package app\n\ntype base struct {\n\tName string `validate:\"required\"`\n}\n\n" +
+			"//kanna:validate\ntype Signup base\n",
+	})
+	if code, _, stderr := run(t, dir); code != cli.ExitOK || strings.Contains(stderr, "marks a struct type") {
+		t.Errorf("run = %d, stderr %q; want success", code, stderr)
+	}
+	got := readFile(t, filepath.Join(dir, "validator_gen.go"))
+	if !strings.Contains(got, "func (x Signup) Validate() error") {
+		t.Errorf("validator_gen.go has no Validate for Signup:\n%s", got)
+	}
+}
+
 func TestCommand_WarnsWhenNothingIsMarked(t *testing.T) {
 	t.Parallel()
 
