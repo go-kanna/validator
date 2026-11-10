@@ -42,13 +42,13 @@ func method(f *gofile.File, w *validation.Writer, p plan) {
 
 	body := w.Body(s, x, errs)
 	for _, fp := range p.fields {
-		path := strconv.Quote(fp.path)
-		nestPath := path
+		name := strconv.Quote(fp.path)
+		nestName := name
 		if fp.flatten {
-			nestPath = `""`
+			nestName = ""
 		}
 		fmt.Fprint(f, "\n")
-		body.Value(fp.Value, x+"."+fp.Name, path, nestPath)
+		body.Value(fp.Value, x+"."+fp.Name, name, nestName)
 	}
 
 	if p.hook != nil {

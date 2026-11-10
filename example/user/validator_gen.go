@@ -20,61 +20,61 @@ func (x CreateUserRequest) Validate() error {
 	var errs validator.Errors
 
 	if x.Name == "" {
-		errs.Add("name", validator.Blank())
+		errs.Add(validator.Field("name"), validator.Blank())
 	} else {
 		if utf8.RuneCountInString(x.Name) > 50 {
-			errs.Add("name", validator.TooLong(50))
+			errs.Add(validator.Field("name"), validator.TooLong(50))
 		}
 	}
 
 	if x.Email.IsZero() {
-		errs.Add("email", validator.Blank())
+		errs.Add(validator.Field("email"), validator.Blank())
 	}
 
 	if x.Age < 18 {
-		errs.Add("age", validator.GreaterThanOrEqualTo(18))
+		errs.Add(validator.Field("age"), validator.GreaterThanOrEqualTo(18))
 	}
 	if x.Age > 130 {
-		errs.Add("age", validator.LessThanOrEqualTo(130))
+		errs.Add(validator.Field("age"), validator.LessThanOrEqualTo(130))
 	}
 
 	if x.Role == "" {
-		errs.Add("role", validator.Blank())
+		errs.Add(validator.Field("role"), validator.Blank())
 	} else {
 		if x.Role != "admin" && x.Role != "member" && x.Role != "guest" {
-			errs.Add("role", validator.Inclusion())
+			errs.Add(validator.Field("role"), validator.Inclusion())
 		}
 	}
 
 	if len(x.Tags) > 5 {
-		errs.Add("tags", validator.TooLong(5))
+		errs.Add(validator.Field("tags"), validator.TooMany(5))
 	}
 	for i := range x.Tags {
 		if utf8.RuneCountInString(x.Tags[i]) > 20 {
-			errs.Add(validator.Index("tags", i), validator.TooLong(20))
+			errs.Add(validator.Index(validator.Field("tags"), i), validator.TooLong(20))
 		}
 	}
 
 	if x.Website != nil {
-		errs.Add("website", rule.URL(*x.Website))
+		errs.Add(validator.Field("website"), rule.URL(*x.Website))
 	}
 
 	if x.Address == (Address{}) {
-		errs.Add("address", validator.Blank())
+		errs.Add(validator.Field("address"), validator.Blank())
 	} else {
-		errs.Nest("address", x.Address.Validate())
+		errs.Nest(validator.Field("address"), x.Address.Validate())
 	}
 
 	if x.Password == "" {
-		errs.Add("password", validator.Blank())
+		errs.Add(validator.Field("password"), validator.Blank())
 	} else {
 		if utf8.RuneCountInString(x.Password) < 12 {
-			errs.Add("password", validator.TooShort(12))
+			errs.Add(validator.Field("password"), validator.TooShort(12))
 		}
 	}
 
 	if x.Confirm != x.Password {
-		errs.Add("confirm", validator.Confirmation("password"))
+		errs.Add(validator.Field("confirm"), validator.Confirmation("password"))
 	}
 
 	x.validate(&errs)
@@ -88,15 +88,15 @@ func (x Address) Validate() error {
 	var errs validator.Errors
 
 	if x.Zip == "" {
-		errs.Add("zip", validator.Blank())
+		errs.Add(validator.Field("zip"), validator.Blank())
 	} else {
 		if !patternAddressZip.MatchString(x.Zip) {
-			errs.Add("zip", validator.Invalid())
+			errs.Add(validator.Field("zip"), validator.Invalid())
 		}
 	}
 
 	if x.City == "" {
-		errs.Add("city", validator.Blank())
+		errs.Add(validator.Field("city"), validator.Blank())
 	}
 
 	return errs.Err()

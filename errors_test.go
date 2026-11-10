@@ -35,9 +35,9 @@ func TestErrors_Add(t *testing.T) {
 	t.Parallel()
 
 	var errs validator.Errors
-	errs.Add("name", validator.Blank())
-	errs.Add("age", nil)
-	errs.Add("tags[1]", validator.TooLong(20))
+	errs.Add(validator.Field("name"), validator.Blank())
+	errs.Add(validator.Field("age"), nil)
+	errs.Add(validator.Index(validator.Field("tags"), 1), validator.TooLong(20))
 
 	want := validator.Errors{{Field: "name", Err: validator.Blank()}, {Field: "tags[1]", Err: validator.TooLong(20)}}
 	if !equalErrors(errs, want) {
@@ -51,11 +51,11 @@ func TestErrors_Add_Errors(t *testing.T) {
 	t.Parallel()
 
 	var inner validator.Errors
-	inner.Add("zip", validator.Blank())
-	inner.Add("city", validator.TooLong(3))
+	inner.Add(validator.Field("zip"), validator.Blank())
+	inner.Add(validator.Field("city"), validator.TooLong(3))
 
 	var errs validator.Errors
-	errs.Add("address", inner.Err())
+	errs.Add(validator.Field("address"), inner.Err())
 
 	want := validator.Errors{
 		{Field: "address.zip", Err: validator.Blank()},
@@ -73,14 +73,14 @@ func TestErrors_Nest(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		field string
+		field validator.Path
 		err   error
 		want  validator.Errors
 	}{
-		{name: "nil", field: "address", err: nil, want: nil},
+		{name: "nil", field: validator.Field("address"), err: nil, want: nil},
 		{
 			name:  "Errors move under the field",
-			field: "address",
+			field: validator.Field("address"),
 			err:   inner,
 			want: validator.Errors{
 				{Field: "address.zip", Err: validator.Blank()},
@@ -91,33 +91,33 @@ func TestErrors_Nest(t *testing.T) {
 			// An embedded struct without a JSON name keeps its fields at the
 			// level of the struct embedding it.
 			name:  "an empty field keeps the paths",
-			field: "",
+			field: validator.Path{},
 			err:   inner,
 			want:  inner,
 		},
 		{
 			name:  "element of a slice",
-			field: validator.Index("items", 2),
+			field: validator.Index(validator.Field("items"), 2),
 			err:   validator.Errors{{Field: "sku", Err: validator.Blank()}},
 			want:  validator.Errors{{Field: "items[2].sku", Err: validator.Blank()}},
 		},
 		{
 			name:  "a Coded error lands on the field",
-			field: "email",
+			field: validator.Field("email"),
 			err:   &typeError{code: "email"},
 			want:  validator.Errors{{Field: "email", Err: &typeError{code: "email"}}},
 		},
 		{
 			name:  "a plain error lands on the field",
-			field: "address",
+			field: validator.Field("address"),
 			err:   errors.New("lookup failed"),
 			want:  validator.Errors{{Field: "address", Err: errors.New("lookup failed")}},
 		},
 		{
 			name:  "an error without a field lands on base",
-			field: "",
+			field: validator.Path{},
 			err:   errors.New("lookup failed"),
-			want:  validator.Errors{{Field: validator.Base, Err: errors.New("lookup failed")}},
+			want:  validator.Errors{{Field: "base", Err: errors.New("lookup failed")}},
 		},
 	}
 
@@ -128,7 +128,7 @@ func TestErrors_Nest(t *testing.T) {
 			var got validator.Errors
 			got.Nest(tt.field, tt.err)
 			if !equalErrors(got, tt.want) {
-				t.Errorf("Nest(%q) = %v, want %v", tt.field, got, tt.want)
+				t.Errorf("Nest(%s) = %v, want %v", tt.field, got, tt.want)
 			}
 		})
 	}
@@ -149,19 +149,121 @@ func (s span) MarshalText() ([]byte, error) {
 func TestPaths(t *testing.T) {
 	t.Parallel()
 
+	field := func(name string) validator.Segment {
+		return validator.Segment{Kind: validator.FieldSegment, Name: name}
+	}
+	key := func(name string) validator.Segment { return validator.Segment{Kind: validator.KeySegment, Name: name} }
+	index := func(i int) validator.Segment { return validator.Segment{Kind: validator.IndexSegment, Index: i} }
+
 	tests := []struct {
-		got, want string
+		path     validator.Path
+		want     string
+		segments []validator.Segment
 	}{
-		{got: validator.Index("tags", 2), want: "tags[2]"},
-		{got: validator.Key("labels", "primary"), want: "labels.primary"},
-		{got: validator.Key("scores", 7), want: "scores.7"},
-		{got: validator.Index(validator.Key("groups", "admin"), 0), want: "groups.admin[0]"},
-		{got: validator.Key("levels", level(1)), want: "levels.1"},
-		{got: validator.Key("ranges", span{1, 3}), want: "ranges.1-3"},
+		{path: validator.Field("name"), want: "name", segments: []validator.Segment{field("name")}},
+		{
+			path:     validator.Field("address", "zip"),
+			want:     "address.zip",
+			segments: []validator.Segment{field("address"), field("zip")},
+		},
+		{path: validator.Base, want: "base", segments: []validator.Segment{field("base")}},
+		{path: validator.Path{}, want: "", segments: nil},
+		{
+			path:     validator.Index(validator.Field("tags"), 2),
+			want:     "tags[2]",
+			segments: []validator.Segment{field("tags"), index(2)},
+		},
+		{
+			path:     validator.Key(validator.Field("labels"), "primary"),
+			want:     "labels.primary",
+			segments: []validator.Segment{field("labels"), key("primary")},
+		},
+		{
+			path:     validator.Key(validator.Field("scores"), 7),
+			want:     "scores.7",
+			segments: []validator.Segment{field("scores"), key("7")},
+		},
+		{
+			path:     validator.Index(validator.Key(validator.Field("groups"), "admin"), 0),
+			want:     "groups.admin[0]",
+			segments: []validator.Segment{field("groups"), key("admin"), index(0)},
+		},
+		{
+			path:     validator.Key(validator.Field("levels"), level(1)),
+			want:     "levels.1",
+			segments: []validator.Segment{field("levels"), key("1")},
+		},
+		{
+			path:     validator.Key(validator.Field("ranges"), span{1, 3}),
+			want:     "ranges.1-3",
+			segments: []validator.Segment{field("ranges"), key("1-3")},
+		},
+		{path: validator.Index(validator.Path{}, 1), want: "[1]", segments: []validator.Segment{index(1)}},
 	}
 	for _, tt := range tests {
-		if tt.got != tt.want {
-			t.Errorf("path = %q, want %q", tt.got, tt.want)
+		if got := tt.path.String(); got != tt.want {
+			t.Errorf("path = %q, want %q", got, tt.want)
+		}
+		if got := tt.path.Segments(); !slices.Equal(got, tt.segments) {
+			t.Errorf("segments of %s = %v, want %v", tt.want, got, tt.segments)
+		}
+	}
+}
+
+// Paths that share a start do not share what follows it.
+func TestPaths_Independent(t *testing.T) {
+	t.Parallel()
+
+	tags := validator.Index(validator.Field("tags"), 0)
+	a, b := validator.Index(tags, 1), validator.Index(tags, 2)
+	if a.String() != "tags[0][1]" || b.String() != "tags[0][2]" {
+		t.Errorf("paths = %s and %s, want tags[0][1] and tags[0][2]", a, b)
+	}
+}
+
+// The segments of an error tell a map key from a field, which its path spelled
+// the same, and Nest keeps them as it moves the error.
+func TestErrors_Segments(t *testing.T) {
+	t.Parallel()
+
+	var item validator.Errors
+	item.Add(validator.Field("sku"), validator.Blank())
+	item.Add(validator.Key(validator.Field("notes"), "first.note"), validator.TooLong(3))
+
+	var errs validator.Errors
+	errs.Nest(validator.Index(validator.Field("items"), 2), item.Err())
+	errs.Nest(validator.Field("tags"), validator.Errors{{
+		Field:    "[1]",
+		Segments: []validator.Segment{{Kind: validator.IndexSegment, Index: 1}},
+		Err:      validator.Blank(),
+	}})
+
+	want := []struct {
+		field    string
+		segments []validator.Segment
+	}{
+		{field: "items[2].sku", segments: []validator.Segment{
+			{Kind: validator.FieldSegment, Name: "items"},
+			{Kind: validator.IndexSegment, Index: 2},
+			{Kind: validator.FieldSegment, Name: "sku"},
+		}},
+		{field: "items[2].notes.first.note", segments: []validator.Segment{
+			{Kind: validator.FieldSegment, Name: "items"},
+			{Kind: validator.IndexSegment, Index: 2},
+			{Kind: validator.FieldSegment, Name: "notes"},
+			{Kind: validator.KeySegment, Name: "first.note"},
+		}},
+		{field: "tags[1]", segments: []validator.Segment{
+			{Kind: validator.FieldSegment, Name: "tags"},
+			{Kind: validator.IndexSegment, Index: 1},
+		}},
+	}
+	if len(errs) != len(want) {
+		t.Fatalf("Errors = %v, want %d of them", errs, len(want))
+	}
+	for i, w := range want {
+		if errs[i].Field != w.field || !slices.Equal(errs[i].Segments, w.segments) {
+			t.Errorf("error %d = %q %v, want %q %v", i, errs[i].Field, errs[i].Segments, w.field, w.segments)
 		}
 	}
 }

@@ -93,7 +93,7 @@ type Signup struct {
 
 func (s Signup) validate(errs *validator.Errors) {
 	if s.Name == "root" {
-		errs.Add("name", validator.Fail("reserved"))
+		errs.Add(validator.Field("name"), validator.Fail("reserved"))
 	}
 }
 `
@@ -279,7 +279,7 @@ func TestCommand_RuleNamesAValueType(t *testing.T) {
 			for _, want := range []string{
 				`"example.com/app/model"`,
 				"if _, err := model.NewDeadline(*x.Done); err != nil {",
-				`errs.Add("done", err)`,
+				`errs.Add(validator.Field("done"), err)`,
 			} {
 				if !strings.Contains(got, want) {
 					t.Errorf("validator_gen.go does not contain %q:\n%s", want, got)

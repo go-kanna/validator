@@ -25,9 +25,9 @@ func (x Checked) Validate() error {
 	var errs validator.Errors
 
 	if x.Check == nil {
-		errs.Add("check", validator.Blank())
+		errs.Add(validator.Field("check"), validator.Blank())
 	} else {
-		errs.Nest("check", x.Check.Validate())
+		errs.Nest(validator.Field("check"), x.Check.Validate())
 	}
 
 	return errs.Err()
@@ -39,79 +39,79 @@ func (x Request) Validate() error {
 	var errs validator.Errors
 
 	if x.Name == "" {
-		errs.Add("name", validator.Blank())
+		errs.Add(validator.Field("name"), validator.Blank())
 	} else {
 		if utf8.RuneCountInString(x.Name) < 1 {
-			errs.Add("name", validator.TooShort(1))
+			errs.Add(validator.Field("name"), validator.TooShort(1))
 		}
 		if utf8.RuneCountInString(x.Name) > 50 {
-			errs.Add("name", validator.TooLong(50))
+			errs.Add(validator.Field("name"), validator.TooLong(50))
 		}
 	}
 
 	if x.Age < 18 {
-		errs.Add("age", validator.GreaterThanOrEqualTo(18))
+		errs.Add(validator.Field("age"), validator.GreaterThanOrEqualTo(18))
 	}
 	if x.Age > 130 {
-		errs.Add("age", validator.LessThanOrEqualTo(130))
+		errs.Add(validator.Field("age"), validator.LessThanOrEqualTo(130))
 	}
 
 	if x.Level != 1 && x.Level != 2 && x.Level != 3 {
-		errs.Add("level", validator.Inclusion())
+		errs.Add(validator.Field("level"), validator.Inclusion())
 	}
 
 	if x.Quantity > 1000 {
-		errs.Add("quantity", validator.LessThanOrEqualTo[uint16](1000))
+		errs.Add(validator.Field("quantity"), validator.LessThanOrEqualTo[uint16](1000))
 	}
 
 	if x.Shade != "" {
 		if x.Shade != "light blue" && x.Shade != "red" {
-			errs.Add("shade", validator.Inclusion())
+			errs.Add(validator.Field("shade"), validator.Inclusion())
 		}
 	}
 
 	if !(x.Score > 0) {
-		errs.Add("score", validator.GreaterThan[float64](0))
+		errs.Add(validator.Field("score"), validator.GreaterThan[float64](0))
 	}
 
 	if !(x.Ratio >= 0) {
-		errs.Add("ratio", validator.GreaterThanOrEqualTo[float32](0))
+		errs.Add(validator.Field("ratio"), validator.GreaterThanOrEqualTo[float32](0))
 	}
 	if !(x.Ratio <= 1) {
-		errs.Add("ratio", validator.LessThanOrEqualTo[float32](1))
+		errs.Add(validator.Field("ratio"), validator.LessThanOrEqualTo[float32](1))
 	}
 
 	if x.Weight == 0 || math.IsNaN(x.Weight) {
-		errs.Add("weight", validator.OtherThan[float64](0))
+		errs.Add(validator.Field("weight"), validator.OtherThan[float64](0))
 	}
 
 	if x.Factor == 1 || math.IsNaN(float64(x.Factor)) {
-		errs.Add("factor", validator.OtherThan[float32](1))
+		errs.Add(validator.Field("factor"), validator.OtherThan[float32](1))
 	}
 
 	if x.Role == "" {
-		errs.Add("role", validator.Blank())
+		errs.Add(validator.Field("role"), validator.Blank())
 	} else {
 		if x.Role != "admin" && x.Role != "member" {
-			errs.Add("role", validator.Inclusion())
+			errs.Add(validator.Field("role"), validator.Inclusion())
 		}
 	}
 
 	if x.Nickname != nil {
 		if utf8.RuneCountInString(*x.Nickname) < 2 {
-			errs.Add("nickname", validator.TooShort(2))
+			errs.Add(validator.Field("nickname"), validator.TooShort(2))
 		}
 	}
 
 	if len(x.Tags) > 5 {
-		errs.Add("tags", validator.TooLong(5))
+		errs.Add(validator.Field("tags"), validator.TooMany(5))
 	}
 	for i := range x.Tags {
 		if x.Tags[i] == "" {
-			errs.Add(validator.Index("tags", i), validator.Blank())
+			errs.Add(validator.Index(validator.Field("tags"), i), validator.Blank())
 		} else {
 			if utf8.RuneCountInString(x.Tags[i]) > 20 {
-				errs.Add(validator.Index("tags", i), validator.TooLong(20))
+				errs.Add(validator.Index(validator.Field("tags"), i), validator.TooLong(20))
 			}
 		}
 	}
@@ -119,7 +119,7 @@ func (x Request) Validate() error {
 	for i := range x.Matrix {
 		for i2 := range x.Matrix[i] {
 			if x.Matrix[i][i2] < 0 {
-				errs.Add(validator.Index(validator.Index("matrix", i), i2), validator.GreaterThanOrEqualTo(0))
+				errs.Add(validator.Index(validator.Index(validator.Field("matrix"), i), i2), validator.GreaterThanOrEqualTo(0))
 			}
 		}
 	}
@@ -127,174 +127,174 @@ func (x Request) Validate() error {
 	for _, k := range slices.Sorted(maps.Keys(x.Labels)) {
 		v := x.Labels[k]
 		if utf8.RuneCountInString(string(v)) > 10 {
-			errs.Add(validator.Key("labels", k), validator.TooLong(10))
+			errs.Add(validator.Key(validator.Field("labels"), k), validator.TooLong(10))
 		}
 	}
 
 	if x.Zip != "" {
 		if !patternRequestZip2.MatchString(x.Zip) {
-			errs.Add("zip", validator.Invalid())
+			errs.Add(validator.Field("zip"), validator.Invalid())
 		}
 	}
 
 	if x.PostCode != "" {
 		if !patternRequestZip2.MatchString(x.PostCode) {
-			errs.Add("post_code", validator.Invalid())
+			errs.Add(validator.Field("post_code"), validator.Invalid())
 		}
 	}
 
 	if !patternRequestCode.MatchString(string(x.Code)) {
-		errs.Add("code", validator.Invalid())
+		errs.Add(validator.Field("code"), validator.Invalid())
 	}
 
 	if x.Password == "" {
-		errs.Add("password", validator.Blank())
+		errs.Add(validator.Field("password"), validator.Blank())
 	}
 
 	if x.Confirm != x.Password {
-		errs.Add("confirm", validator.Confirmation("password"))
+		errs.Add(validator.Field("confirm"), validator.Confirmation("password"))
 	}
 
 	if x.NewAgain != nil {
 		if x.NewPass == nil || *x.NewAgain != *x.NewPass {
-			errs.Add("new_again", validator.Confirmation("new_pass"))
+			errs.Add(validator.Field("new_again"), validator.Confirmation("new_pass"))
 		}
 	}
 
 	if !x.Active {
-		errs.Add("active", validator.Blank())
+		errs.Add(validator.Field("active"), validator.Blank())
 	}
 
 	if x.When.IsZero() {
-		errs.Add("when", validator.Blank())
+		errs.Add(validator.Field("when"), validator.Blank())
 	}
 
 	if x.Point == (Point{}) {
-		errs.Add("point", validator.Blank())
+		errs.Add(validator.Field("point"), validator.Blank())
 	}
 
 	for i := range x.Grid {
 		if x.Grid[i] == (Point{}) {
-			errs.Add(validator.Index("grid", i), validator.Blank())
+			errs.Add(validator.Index(validator.Field("grid"), i), validator.Blank())
 		}
 	}
 
-	errs.Nest("address", x.Address.Validate())
+	errs.Nest(validator.Field("address"), x.Address.Validate())
 
 	if x.Billing == nil {
-		errs.Add("billing", validator.Blank())
+		errs.Add(validator.Field("billing"), validator.Blank())
 	} else {
-		errs.Nest("billing", x.Billing.Validate())
+		errs.Nest(validator.Field("billing"), x.Billing.Validate())
 	}
 
 	if len(x.Items) < 1 {
-		errs.Add("items", validator.TooShort(1))
+		errs.Add(validator.Field("items"), validator.TooFew(1))
 	}
 	for i := range x.Items {
-		errs.Nest(validator.Index("items", i), x.Items[i].Validate())
+		errs.Nest(validator.Index(validator.Field("items"), i), x.Items[i].Validate())
 	}
 
 	for _, k := range slices.Sorted(maps.Keys(x.ByName)) {
 		v := x.ByName[k]
 		if v != nil {
-			errs.Nest(validator.Key("by_name", k), v.Validate())
+			errs.Nest(validator.Key(validator.Field("by_name"), k), v.Validate())
 		}
 	}
 
 	if x.Extra != nil {
-		errs.Nest("extra", x.Extra.Validate())
+		errs.Nest(validator.Field("extra"), x.Extra.Validate())
 	}
 
 	if x.Count == 0 {
-		errs.Add("count", validator.Blank())
+		errs.Add(validator.Field("count"), validator.Blank())
 	}
 
 	if x.List == nil {
-		errs.Add("list", validator.Blank())
+		errs.Add(validator.Field("list"), validator.Blank())
 	}
 
 	if x.OptAge != 0 {
 		if x.OptAge < 1 {
-			errs.Add("opt_age", validator.GreaterThanOrEqualTo(1))
+			errs.Add(validator.Field("opt_age"), validator.GreaterThanOrEqualTo(1))
 		}
 	}
 
 	if x.OptTags != nil {
 		if len(x.OptTags) < 2 {
-			errs.Add("opt_tags", validator.TooShort(2))
+			errs.Add(validator.Field("opt_tags"), validator.TooFew(2))
 		}
 	}
 
 	if x.OptAddr != (Address{}) {
-		errs.Nest("opt_addr", x.OptAddr.Validate())
+		errs.Nest(validator.Field("opt_addr"), x.OptAddr.Validate())
 	}
 
 	if !x.Span.IsZero() {
-		errs.Nest("span", x.Span.Validate())
+		errs.Nest(validator.Field("span"), x.Span.Validate())
 	}
 
 	if x.Picks != nil {
 		for i := range *x.Picks {
 			if (*x.Picks)[i] == "" {
-				errs.Add(validator.Index("picks", i), validator.Blank())
+				errs.Add(validator.Index(validator.Field("picks"), i), validator.Blank())
 			}
 		}
 	}
 
 	for _, k := range validator.SortedKeys(x.ByPoint) {
 		v := x.ByPoint[k]
-		errs.Nest(validator.Key("by_point", k), v.Validate())
+		errs.Nest(validator.Key(validator.Field("by_point"), k), v.Validate())
 	}
 
 	if x.DoneAt != nil {
 		if _, err := schedule.NewSince2000(*x.DoneAt); err != nil {
-			errs.Add("done_at", err)
+			errs.Add(validator.Field("done_at"), err)
 		}
 	}
 
 	if x.Due != nil {
 		if _, err := schedule.NewDeadline(*x.Due); err != nil {
-			errs.Add("due", err)
+			errs.Add(validator.Field("due"), err)
 		}
 	}
 
 	if x.Shift != "" {
 		if _, err := schedule.NewShift(x.Shift); err != nil {
-			errs.Add("shift", err)
+			errs.Add(validator.Field("shift"), err)
 		}
 	}
 
 	for i := range x.Shifts {
 		if _, err := schedule.NewSince2000(x.Shifts[i]); err != nil {
-			errs.Add(validator.Index("shifts", i), err)
+			errs.Add(validator.Index(validator.Field("shifts"), i), err)
 		}
 	}
 
 	if x.Timeout != 0 {
 		if x.Timeout < time.Second {
-			errs.Add("timeout", validator.GreaterThanOrEqualTo(time.Second))
+			errs.Add(validator.Field("timeout"), validator.GreaterThanOrEqualTo(time.Second))
 		}
 		if x.Timeout > 90*time.Minute {
-			errs.Add("timeout", validator.LessThanOrEqualTo(90*time.Minute))
+			errs.Add(validator.Field("timeout"), validator.LessThanOrEqualTo(90*time.Minute))
 		}
 	}
 
 	if x.Backoff != nil {
 		if *x.Backoff != time.Duration(0) && *x.Backoff != 1500*time.Millisecond {
-			errs.Add("backoff", validator.Inclusion())
+			errs.Add(validator.Field("backoff"), validator.Inclusion())
 		}
 	}
 
 	if utf8.RuneCountInString(string(x.Stage)) > 6 {
-		errs.Add("stage", validator.TooLong(6))
+		errs.Add(validator.Field("stage"), validator.TooLong(6))
 	}
 	if x.Stage != "draft" && x.Stage != "review" {
-		errs.Add("stage", validator.Inclusion())
+		errs.Add(validator.Field("stage"), validator.Inclusion())
 	} else {
-		errs.Nest("stage", x.Stage.Validate())
+		errs.Nest(validator.Field("stage"), x.Stage.Validate())
 	}
 
-	errs.Nest("", x.Audit.Validate())
+	errs.Nest(validator.Path{}, x.Audit.Validate())
 
 	x.validate(&errs)
 
@@ -307,7 +307,7 @@ func (x Address) Validate() error {
 	var errs validator.Errors
 
 	if x.Zip == "" {
-		errs.Add("zip", validator.Blank())
+		errs.Add(validator.Field("zip"), validator.Blank())
 	}
 
 	return errs.Err()
@@ -319,7 +319,7 @@ func (x Audit) Validate() error {
 	var errs validator.Errors
 
 	if x.By == "" {
-		errs.Add("by", validator.Blank())
+		errs.Add(validator.Field("by"), validator.Blank())
 	}
 
 	return errs.Err()
@@ -331,33 +331,33 @@ func (x Promoted) Validate() error {
 	var errs validator.Errors
 
 	if x.Pointer.Item != nil {
-		errs.Nest("pointer", x.Pointer.Validate())
+		errs.Nest(validator.Field("pointer"), x.Pointer.Validate())
 	}
 
 	if x.Interface.Checker != nil {
-		errs.Nest("interface", x.Interface.Validate())
+		errs.Nest(validator.Field("interface"), x.Interface.Validate())
 	}
 
 	if x.Deeper.Through.ByPointer != nil && x.Deeper.Through.ByPointer.Item != nil {
-		errs.Nest("deeper", x.Deeper.Validate())
+		errs.Nest(validator.Field("deeper"), x.Deeper.Validate())
 	}
 
 	if x.Ref != nil {
 		if x.Ref.Item != nil {
-			errs.Nest("ref", x.Ref.Validate())
+			errs.Nest(validator.Field("ref"), x.Ref.Validate())
 		}
 	}
 
 	for i := range x.List {
 		if x.List[i].Item != nil {
-			errs.Nest(validator.Index("list", i), x.List[i].Validate())
+			errs.Nest(validator.Index(validator.Field("list"), i), x.List[i].Validate())
 		}
 	}
 
 	for _, k := range slices.Sorted(maps.Keys(x.Map)) {
 		v := x.Map[k]
 		if v.Item != nil {
-			errs.Nest(validator.Key("map", k), v.Validate())
+			errs.Nest(validator.Key(validator.Field("map"), k), v.Validate())
 		}
 	}
 
