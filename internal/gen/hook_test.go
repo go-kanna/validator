@@ -63,21 +63,22 @@ func (o Order) validate(errs *validator.Errors) {
 	errs.Add(validator.Base, nil)
 	errs.Add(validator.Field("address", "zip"), nil)
 	errs.Add(validator.Field("address", "base"), nil)
-	errs.Add(validator.Index(validator.Field("grid"), 0), nil)
+	errs.Add(validator.Field("grid").Index(0), nil)
 	errs.Add(validator.Field("a.b"), nil)
 	errs.Add(validator.Field("Secret"), nil)
 	errs.Add(validator.Field("note"), nil)
 	errs.Add(validator.Field("payload", "anything"), nil)
-	errs.Add(validator.Index(validator.Field("payload"), 0), nil)
+	errs.Add(validator.Field("payload").Index(0), nil)
 	errs.Add(validator.Field("checked", "anything"), nil)
 	errs.Add(validator.Field("wrapped", "virtual"), nil)
-	errs.Add(validator.Index(validator.Field("items"), 1), nil)
-	errs.Add(validator.Index(validator.Index(validator.Field("grid"), 0), 1), nil)
-	errs.Add(validator.Key(validator.Field("labels"), "x"), nil)
+	errs.Add(validator.Field("items").Index(1), nil)
+	errs.Add(validator.Field("grid").Index(0).Index(1), nil)
+	errs.Add(validator.Field("labels").Key("x"), nil)
 	errs.Add((validator.Field("name")), nil)
 	errs.Nest(validator.Path{}, nil)
 	errs.Nest(validator.Field("address"), nil)
-	errs.Nest(validator.Index(validator.Field("items"), 0), nil)
+	errs.Nest(validator.Field("items").Index(0), nil)
+	errs.Add(validator.Field("items").Index(1).Field("sku"), nil)
 	func() {
 		errs.Add(validator.Field("address", "zip"), nil)
 		errs := &validator.Errors{}
@@ -85,7 +86,7 @@ func (o Order) validate(errs *validator.Errors) {
 	}()
 	var other validator.Errors
 	other.Add(validator.Field("nothing"), nil)
-	other.Add(validator.Index(validator.Field("nothing"), 0), nil)
+	other.Add(validator.Field("nothing").Index(0), nil)
 	names := []string{"nothing"}
 	errs.Add(validator.Field(names[0]), nil)
 	errs.Add(validator.Field("nothing", names...), nil)
@@ -141,13 +142,13 @@ func (o Order) validate(errs *validator.Errors) {
 	errs.Add(validator.Field("items", "sku"), nil)
 	errs.Add(validator.Field("fixed", "sku"), nil)
 	errs.Add(validator.Field("labels", "x"), nil)
-	errs.Add(validator.Index(validator.Field("labels"), 0), nil)
-	errs.Add(validator.Index(validator.Field("address"), 0), nil)
+	errs.Add(validator.Field("labels").Index(0), nil)
+	errs.Add(validator.Field("address").Index(0), nil)
 	errs.Add(validator.Field("base", "zip"), nil)
 	errs.Add(validator.Path{}, nil)
-	errs.Add(validator.Index(validator.Field("name"), 0), nil)
-	errs.Add(validator.Key(validator.Field("items"), "x"), nil)
-	errs.Nest(validator.Index(validator.Path{}, 0), nil)
+	errs.Add(validator.Field("name").Index(0), nil)
+	errs.Add(validator.Field("items").Key("x"), nil)
+	errs.Nest(validator.Path{}.Index(0), nil)
 	errs.Add(validator.Field("virtual"), nil)
 	errs.Add(validator.Field("address.zip"), nil)
 }
@@ -167,22 +168,22 @@ func (o Order) validate(errs *validator.Errors) {
 ./order.go:22:11: error: "address.zpi" is not a path of Order: address has no field "zpi"
   did you mean "address.zip"?
 ./order.go:23:11: error: "age.years" is not a path of Order: age is int, with nothing under it
-./order.go:24:11: error: "items.sku" is not a path of Order: items is a slice, whose elements go under validator.Index
-./order.go:25:11: error: "fixed.sku" is not a path of Order: fixed is an array, whose elements go under validator.Index
-./order.go:26:11: error: "labels.x" is not a path of Order: labels is a map, whose values go under validator.Key
-./order.go:27:11: error: validator.Index(validator.Field("labels"), 0) is not a path of Order: ` +
-		`validator.Index needs a slice or an array, not map[string]Item
-./order.go:28:11: error: validator.Index(validator.Field("address"), 0) is not a path of Order: ` +
-		`validator.Index needs a slice or an array, not Address
+./order.go:24:11: error: "items.sku" is not a path of Order: items is a slice, whose elements go under Path.Index
+./order.go:25:11: error: "fixed.sku" is not a path of Order: fixed is an array, whose elements go under Path.Index
+./order.go:26:11: error: "labels.x" is not a path of Order: labels is a map, whose values go under Path.Key
+./order.go:27:11: error: validator.Field("labels").Index(0) is not a path of Order: ` +
+		`Path.Index needs a slice or an array, not map[string]Item
+./order.go:28:11: error: validator.Field("address").Index(0) is not a path of Order: ` +
+		`Path.Index needs a slice or an array, not Address
 ./order.go:29:11: error: "base.zip" is not a path of Order: base is the value as a whole, with nothing under it
 ./order.go:30:11: error: validator.Path{} is not a path of Order: Add needs a field
   an error on Order as a whole goes under validator.Base
-./order.go:31:11: error: validator.Index(validator.Field("name"), 0) is not a path of Order: ` +
-		`validator.Index needs a slice or an array, not string
-./order.go:32:11: error: validator.Key(validator.Field("items"), "x") is not a path of Order: ` +
-		`validator.Key needs a map, not []Item
-./order.go:33:12: error: validator.Index(validator.Path{}, 0) is not a path of Order: ` +
-		`validator.Index needs a slice or an array, not Order
+./order.go:31:11: error: validator.Field("name").Index(0) is not a path of Order: ` +
+		`Path.Index needs a slice or an array, not string
+./order.go:32:11: error: validator.Field("items").Key("x") is not a path of Order: ` +
+		`Path.Key needs a map, not []Item
+./order.go:33:12: error: validator.Path{}.Index(0) is not a path of Order: ` +
+		`Path.Index needs a slice or an array, not Order
 ./order.go:34:11: error: "virtual" is not a path of Order: Order has no field "virtual"
   an error on Order as a whole goes under validator.Base
 ./order.go:35:11: error: "address.zip" is not a path of Order: Order has no field "address.zip"

@@ -41,7 +41,7 @@ func (x CreateUserRequest) Validate() error {
 	}
 	for i := range x.Tags {
 		if utf8.RuneCountInString(x.Tags[i]) > 20 {
-			errs.Add(validator.Index(validator.Field("tags"), i), validator.TooLong(20))
+			errs.Add(validator.Field("tags").Index(i), validator.TooLong(20))
 		}
 	}
 

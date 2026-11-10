@@ -258,7 +258,7 @@ func (d *decoding) pathOf(dec *jsontext.Decoder) Path {
 		switch kind, _ := dec.StackIndex(level); {
 		case kind == jsontext.KindBeginArray:
 			i, _ := strconv.Atoi(token)
-			p = Index(p, i)
+			p = p.Index(i)
 		case level-1 < len(d.maps) && d.maps[level-1]:
 			p = p.with(Segment{Kind: KeySegment, Name: token})
 		default:

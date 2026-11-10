@@ -68,7 +68,7 @@ func (x CreateUserRequest) Validate() error {
 
 	for i := range x.Tags {
 		if utf8.RuneCountInString(x.Tags[i]) > 20 {
-			errs.Add(validator.Index(validator.Field("tags"), i), validator.TooLong(20))
+			errs.Add(validator.Field("tags").Index(i), validator.TooLong(20))
 		}
 	}
 
@@ -165,16 +165,16 @@ func (x CreateUserRequest) validate(errs *validator.Errors) {
 }
 ```
 
-パスは `validator.Path` です。`validator.Field("address", "zip")` はフィールドを JSON 名で辿り、`validator.Index` と `validator.Key` は、`validator.Key(validator.Field("labels"), k)` のように、そこから要素やマップの値に進みます。構造体全体に関するエラーは、Rails と同じく `validator.Base`（`"base"`）の下に置きます。`Add` に、ほかの `Validate` が返したものなどの `Errors` を渡すと、`Nest` と同じく、その 1 つずつをパスの下に移します。`items[2].sku` のように要素の下のフィールドに置くときは、自分の `Errors` を作り、`validator.Index(validator.Field("items"), 2)` の下にネストします。
+パスは `validator.Path` です。`validator.Field("address", "zip")` は、フィールドを JSON 名で辿るパスを作ります。その先は `Path` のメソッドで書きます。`Index` は要素に、`Key` はマップの値に、`Field` はその下のフィールドに進みます。`items[2].sku` なら `validator.Field("items").Index(2).Field("sku")` です。`Key` は、`validator.Field("labels").Key(k)` のようにマップのキーをそのまま受け取り、encoding/json がキーを名付けるのと同じ形の文字列にします。構造体全体に関するエラーは、Rails と同じく `validator.Base`（`"base"`）の下に置きます。`Add` に、ほかの `Validate` が返したものなどの `Errors` を渡すと、`Nest` と同じく、その 1 つずつをパスの下に移します。
 
-kanna-validator は、生成するときに、フックがエラーを置くパスを検査します。対象は、渡された `Errors` の `Add` と `Nest` の第 1 引数のうち、定数を渡した `validator.Field`、`validator.Base`、`validator.Path{}` と、それに `validator.Index` や `validator.Key` を使ったものです。パスは、フィールドをそのエラーが置かれる名前で辿り、どこで終わっても、`base` で終わってもかまいません。何も指さないパスがあれば、生成を止めます:
+kanna-validator は、生成するときに、フックがエラーを置くパスを検査します。対象は、渡された `Errors` の `Add` と `Nest` の第 1 引数のうち、定数を渡した `validator.Field`、`validator.Base`、`validator.Path{}` で始まり、`Index`、`Key`、定数を渡した `Field` で続くものです。パスは、フィールドをそのエラーが置かれる名前で辿り、どこで終わっても、`base` で終わってもかまいません。何も指さないパスがあれば、生成を止めます:
 
 ```text
 user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserRequest has no field "aeg"
   did you mean "age"?
 ```
 
-`validator.Field` に渡す名前は 1 つずつが 1 つのフィールドなので、`validator.Field("address.zip")` は `address.zip` という名前のフィールドを指し、`validator.Field("address", "zip")` と書くようヒントを出します。kanna-validator が `Validate` を書かない型と、インターフェースの先は、何を報告するかはその `Validate` 次第なので見ません。そのような型を JSON 名なしで埋め込んでいれば、その階層ではどの名前も通します。`Add(validator.Path{})` も生成を止めます。構造体全体のエラーは `validator.Base` に置くからです。`Nest(validator.Path{})` は、埋め込み構造体と同じく、ネストしたものを構造体の階層に置くので通します。`validator.Field(name)` のように実行時にしか分からない名前で組み立てるパスは検査しません。
+`validator.Field` に渡す名前は 1 つずつが 1 つのフィールドなので、`validator.Field("address.zip")` は `address.zip` という名前のフィールドを指し、`validator.Field("address", "zip")` と書くようヒントを出します。kanna-validator が `Validate` を書かない型と、インターフェースの先は、何を報告するかはその `Validate` 次第なので見ません。そのような型を JSON 名なしで埋め込んでいれば、その階層ではどの名前も通します。`Add(validator.Path{})` も生成を止めます。構造体全体のエラーは `validator.Base` に置くからです。`Nest(validator.Path{})` は、埋め込み構造体と同じく、ネストしたものを構造体の階層に置くので通します。`validator.Field(name)` のように実行時にしか分からない名前で組み立てるパスと、変数に入れたパスから続けるパスは検査しません。
 
 ## エラー
 

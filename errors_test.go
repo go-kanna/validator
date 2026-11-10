@@ -37,7 +37,7 @@ func TestErrors_Add(t *testing.T) {
 	var errs validator.Errors
 	errs.Add(validator.Field("name"), validator.Blank())
 	errs.Add(validator.Field("age"), nil)
-	errs.Add(validator.Index(validator.Field("tags"), 1), validator.TooLong(20))
+	errs.Add(validator.Field("tags").Index(1), validator.TooLong(20))
 
 	want := validator.Errors{{Field: "name", Err: validator.Blank()}, {Field: "tags[1]", Err: validator.TooLong(20)}}
 	if !equalErrors(errs, want) {
@@ -97,7 +97,7 @@ func TestErrors_Nest(t *testing.T) {
 		},
 		{
 			name:  "element of a slice",
-			field: validator.Index(validator.Field("items"), 2),
+			field: validator.Field("items").Index(2),
 			err:   validator.Errors{{Field: "sku", Err: validator.Blank()}},
 			want:  validator.Errors{{Field: "items[2].sku", Err: validator.Blank()}},
 		},
@@ -169,36 +169,64 @@ func TestPaths(t *testing.T) {
 		{path: validator.Base, want: "base", segments: []validator.Segment{field("base")}},
 		{path: validator.Path{}, want: "", segments: nil},
 		{
-			path:     validator.Index(validator.Field("tags"), 2),
+			path:     validator.Field("tags").Index(2),
 			want:     "tags[2]",
 			segments: []validator.Segment{field("tags"), index(2)},
 		},
 		{
-			path:     validator.Key(validator.Field("labels"), "primary"),
+			path:     validator.Field("labels").Key("primary"),
 			want:     "labels.primary",
 			segments: []validator.Segment{field("labels"), key("primary")},
 		},
 		{
-			path:     validator.Key(validator.Field("scores"), 7),
+			path:     validator.Field("scores").Key(7),
 			want:     "scores.7",
 			segments: []validator.Segment{field("scores"), key("7")},
 		},
 		{
-			path:     validator.Index(validator.Key(validator.Field("groups"), "admin"), 0),
+			path:     validator.Field("groups").Key("admin").Index(0),
 			want:     "groups.admin[0]",
 			segments: []validator.Segment{field("groups"), key("admin"), index(0)},
 		},
 		{
-			path:     validator.Key(validator.Field("levels"), level(1)),
+			path:     validator.Field("levels").Key(level(1)),
 			want:     "levels.1",
 			segments: []validator.Segment{field("levels"), key("1")},
 		},
 		{
-			path:     validator.Key(validator.Field("ranges"), span{1, 3}),
+			path:     validator.Field("ranges").Key(span{1, 3}),
 			want:     "ranges.1-3",
 			segments: []validator.Segment{field("ranges"), key("1-3")},
 		},
-		{path: validator.Index(validator.Path{}, 1), want: "[1]", segments: []validator.Segment{index(1)}},
+		{
+			// Key takes any, and names a key by its own type as a map of that
+			// type of keys does.
+			path:     validator.Field("ranges").Key(any(span{1, 3})),
+			want:     "ranges.1-3",
+			segments: []validator.Segment{field("ranges"), key("1-3")},
+		},
+		{
+			path:     validator.Field("flags").Key(true),
+			want:     "flags.true",
+			segments: []validator.Segment{field("flags"), key("true")},
+		},
+		{path: validator.Path{}.Index(1), want: "[1]", segments: []validator.Segment{index(1)}},
+		{
+			path:     validator.Field("items").Index(2).Field("sku"),
+			want:     "items[2].sku",
+			segments: []validator.Segment{field("items"), index(2), field("sku")},
+		},
+		{
+			path:     validator.Field("groups").Key("admin").Field("owner", "name"),
+			want:     "groups.admin.owner.name",
+			segments: []validator.Segment{field("groups"), key("admin"), field("owner"), field("name")},
+		},
+		{
+			path:     validator.Field("address").Field("zip"),
+			want:     "address.zip",
+			segments: []validator.Segment{field("address"), field("zip")},
+		},
+		{path: validator.Path{}.Field("name"), want: "name", segments: []validator.Segment{field("name")}},
 	}
 	for _, tt := range tests {
 		if got := tt.path.String(); got != tt.want {
@@ -214,10 +242,15 @@ func TestPaths(t *testing.T) {
 func TestPaths_Independent(t *testing.T) {
 	t.Parallel()
 
-	tags := validator.Index(validator.Field("tags"), 0)
-	a, b := validator.Index(tags, 1), validator.Index(tags, 2)
+	tags := validator.Field("tags").Index(0)
+	a, b := tags.Index(1), tags.Index(2)
 	if a.String() != "tags[0][1]" || b.String() != "tags[0][2]" {
 		t.Errorf("paths = %s and %s, want tags[0][1] and tags[0][2]", a, b)
+	}
+	item := validator.Field("items").Index(0)
+	c, d := item.Field("sku"), item.Field("name")
+	if c.String() != "items[0].sku" || d.String() != "items[0].name" {
+		t.Errorf("paths = %s and %s, want items[0].sku and items[0].name", c, d)
 	}
 }
 
@@ -228,10 +261,10 @@ func TestErrors_Segments(t *testing.T) {
 
 	var item validator.Errors
 	item.Add(validator.Field("sku"), validator.Blank())
-	item.Add(validator.Key(validator.Field("notes"), "first.note"), validator.TooLong(3))
+	item.Add(validator.Field("notes").Key("first.note"), validator.TooLong(3))
 
 	var errs validator.Errors
-	errs.Nest(validator.Index(validator.Field("items"), 2), item.Err())
+	errs.Nest(validator.Field("items").Index(2), item.Err())
 	errs.Nest(validator.Field("tags"), validator.Errors{{
 		Field:    "[1]",
 		Segments: []validator.Segment{{Kind: validator.IndexSegment, Index: 1}},
@@ -273,9 +306,9 @@ func TestFieldError_FieldNames(t *testing.T) {
 	t.Parallel()
 
 	var item validator.Errors
-	item.Add(validator.Key(validator.Field("notes"), "first_note"), validator.TooLong(3))
+	item.Add(validator.Field("notes").Key("first_note"), validator.TooLong(3))
 	var nested validator.Errors
-	nested.Nest(validator.Index(validator.Field("items"), 2), item.Err())
+	nested.Nest(validator.Field("items").Index(2), item.Err())
 
 	tests := []struct {
 		name string
@@ -285,7 +318,7 @@ func TestFieldError_FieldNames(t *testing.T) {
 		{name: "fields", err: fieldError(validator.Field("address", "zip")), want: []string{"address", "zip"}},
 		{
 			name: "keys and indexes",
-			err:  fieldError(validator.Index(validator.Key(validator.Field("groups"), "admin"), 0)),
+			err:  fieldError(validator.Field("groups").Key("admin").Index(0)),
 			want: []string{"groups"},
 		},
 		{name: "nested", err: nested[0], want: []string{"items", "notes"}},
