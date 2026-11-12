@@ -99,7 +99,8 @@ $ go generate ./...
 ./request.go:5:2: error: unknown rule "requried" (field Name)
   did you mean "required"?
 ./request.go:6:2: error: rule "email" cannot apply to int (field Age)
-./request.go:7:2: error: rule "max": 300 does not fit uint8 (field Level)
+./request.go:7:2: error: rule "max" cannot apply to uint8 (field Level)
+  max measures strings, slices, and maps; compare a number with lte
 ./request.go:8:2: error: invalid pattern: error parsing regexp: missing closing ]: `[0-9` (field Zip)
 ./request.go:10:2: error: eqfield=Pasword: no such field (field Confirm)
   did you mean "Password"?
