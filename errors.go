@@ -234,27 +234,6 @@ func join(p Path, fe FieldError) string {
 	return p.String() + "." + fe.Field
 }
 
-// SortedKeys returns the keys of m in the order of their names in a path, as
-// Key spells them. A generated Validate walks a map whose keys have no order
-// of their own, such as structs, in it, so that its errors keep one order.
-func SortedKeys[M ~map[K]V, K comparable, V any](m M) []K {
-	type named struct {
-		key  K
-		name string
-	}
-	all := make([]named, 0, len(m))
-	for k := range m {
-		all = append(all, named{key: k, name: keyName(k)})
-	}
-	slices.SortFunc(all, func(a, b named) int { return strings.Compare(a.name, b.name) })
-
-	keys := make([]K, len(all))
-	for i, n := range all {
-		keys[i] = n.key
-	}
-	return keys
-}
-
 // keyName spells key as Marshal names it in an object: a string as it is, and
 // anything else as the key of a map, which a String method has no say in.
 func keyName(key any) string {

@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-kanna/validator"
+	"github.com/go-kanna/validator/impl"
 	"github.com/go-kanna/validator/internal/gen/testdata/emit/schedule"
 )
 
@@ -241,7 +242,7 @@ func (x Request) Validate() error {
 		}
 	}
 
-	for _, k := range validator.SortedKeys(x.ByPoint) {
+	for _, k := range impl.SortedKeys(x.ByPoint) {
 		v := x.ByPoint[k]
 		errs.Nest(validator.Field("by_point").Key(k), v.Validate())
 	}
