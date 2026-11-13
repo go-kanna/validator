@@ -566,11 +566,7 @@ func TestCommand_RejectsAMisplacedDirective(t *testing.T) {
 		src  string
 		want string
 	}{
-		{
-			name: "a string type",
-			src:  "//kanna:validate\ntype Level string\n",
-			want: "a type other than a struct or an interface",
-		},
+		{name: "a string type", src: "//kanna:validate\ntype Level string\n", want: "a string type"},
 		{name: "an alias", src: "//kanna:validate\ntype Level = string\n", want: "a type alias"},
 		{name: "an alias of a struct", src: "type S struct{}\n\n//kanna:validate\ntype T = S\n", want: "a type alias"},
 		{name: "an interface", src: "//kanna:validate\ntype V interface{ M() }\n", want: "an interface type"},

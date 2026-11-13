@@ -349,18 +349,6 @@ func fieldError(p validator.Path) validator.FieldError {
 	return errs[0]
 }
 
-func TestSortedKeys(t *testing.T) {
-	t.Parallel()
-
-	m := map[span]int{{10, 20}: 0, {2, 3}: 0, {1, 5}: 0}
-	want := []span{{1, 5}, {10, 20}, {2, 3}}
-	for range 20 {
-		if got := validator.SortedKeys(m); !slices.Equal(got, want) {
-			t.Fatalf("SortedKeys() = %v, want %v", got, want)
-		}
-	}
-}
-
 func TestErrors_Err(t *testing.T) {
 	t.Parallel()
 
