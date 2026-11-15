@@ -85,7 +85,7 @@ func (x CreateUserRequest) Validate() error {
 
 どのルールも、読めて、デバッガで止めることもできる `if` 文です。タグを変更すると生成コードも変わるので、ルールの変更はレビューに現れます。
 
-kanna の生成器を 2 つ以上使うなら、必要な順に動かす [`go tool kanna gen`](https://github.com/go-kanna/kanna) で動かしてください。
+kanna のジェネレータを 2 つ以上使うなら、必要な順に動かす [`go tool kanna gen`](https://github.com/go-kanna/kanna) で実行してください。
 
 存在しないルールやフィールドに合わないルールは、それに当たる最初のリクエストを止めるのではなく、生成を止めます:
 
@@ -128,7 +128,7 @@ $ go generate ./...
 | `omitempty` | ゼロ値を持つものすべて | ゼロ値には、後に続くルールを適用しない | |
 | `dive` | スライス、配列、マップ | 後に続くルールを各要素に適用する。マップでは各値に適用する | |
 
-Rails はコレクションの長さも文字列と同じコードで報告しますが、スライスとマップの長さには別のコードを出すので、文言で文字数ではなく要素の数を言えます。文字数は、go-playground と同じく rune で数えます。`e` と結合用のアクセントで書いた `é` は 2、家族の絵文字 👨‍👩‍👧 は 5 です。`pattern=` は、Go の `regexp.MatchString` や JSON Schema の `pattern` と同じく、文字列のどこかに一致すれば通します。`pattern=\d{3}` は `"a123b"` を通すので、全体に一致させるには `^` と `$` を書きます。
+Rails はコレクションの長さも文字列と同じコードで報告しますが、スライスとマップの長さには別のコードを出すので、メッセージで文字数ではなく要素の数を示せます。文字数は、go-playground と同じく rune で数えます。`e` と結合用のアクセントで書いた `é` は 2、家族の絵文字 👨‍👩‍👧 は 5 です。`pattern=` は、Go の `regexp.MatchString` や JSON Schema の `pattern` と同じく、文字列のどこかに一致すれば通します。`pattern=\d{3}` は `"a123b"` を通すので、全体に一致させるには `^` と `$` を書きます。
 
 go-playground との違い:
 
@@ -147,7 +147,7 @@ go-playground との違い:
 - 型だけで結果が決まるルールは、生成を止めます。どの値も通るもの（`min=0`、`uint` の `gte=0`、`uint8` の `lte=255`）は何も検査せず、どの値も通らないもの（`uint8` の `gt=255`）は、そのフィールドが何を持っても失敗するからです。端は整数の型のもので、`int` と `uint` は 64 ビットとみなします。浮動小数点数には端がありません。無限大を持てるからです。`time.Duration` は負にもなるので、`gte=0s` は意味のあるルールです。
 - kanna-value の enum の `oneof` には、その定数の値を書きます。別のパッケージの enum では、そのパッケージが公開している定数の値です。確実に読み込めるのはそこまでだからです。どの定数でもない値（定数の打ち間違いなど）は、フィールドがその値を持てないので、生成を止めます。enum の `Validate` は `oneof` が通した値にだけ呼ぶので、`oneof` が拒否した値の `inclusion` は 1 回だけ報告します。
 - `oneof` の値は空白で区切り、空白を含む値は `oneof='light blue' red` のように単一引用符で囲みます。go-playground と同じ読み方です。`'red` や `it's` のように、値全体を囲んでいない引用符は生成を止めます。go-playground はその引用符を消し、書いたものとは別の値を検査するからです。値には単一引用符も、ルールを区切るカンマも含められません。
-- `url` が通すのは、ホスト名のある絶対 URL、つまりリクエストが届くアドレスです。go-playground がスキームのある URI として通す `mailto:a@example.com`、`javascript:alert(1)`、`file:///etc/passwd` を報告します。go-playground がやはり通す `https://:80`、65535 を超えるポート、空白（`https://example.com/a b`）も報告します。どちらもスキームは確かめません。`javascript://example.com/%0Aalert(1)` はどちらも通すので、URL をリンクに書く前にスキームを確かめてください。ルールは go-kanna/value のもので、go.mod が require する版のものが動きます。v0.0.18 は、ポートだけでホスト名のない URL、65535 を超えるポート、空白をまだ通します。
+- `url` が通すのは、ホスト名のある絶対 URL、つまりリクエストが届くアドレスです。go-playground がスキームのある URI として通す `mailto:a@example.com`、`javascript:alert(1)`、`file:///etc/passwd` を報告します。go-playground がやはり通す `https://:80`、65535 を超えるポート、空白（`https://example.com/a b`）も報告します。どちらもスキームは確かめません。`javascript://example.com/%0Aalert(1)` はどちらも通すので、URL をリンクに書く前にスキームを確かめてください。ルールは go-kanna/value のもので、go.mod が require するバージョンのものが動きます。v0.0.18 は、ポートだけでホスト名のない URL、65535 を超えるポート、空白をまだ通します。
 - `email` は、Go の net/mail が読む形（RFC 5322）の、飾りのないアドレスの構文を確かめます。ドメインが存在しうるかは見ません。`a@b`、`a@localhost`、`a@[127.0.0.1]`、`a@-b.com` は通ります。go-playground は独自の正規表現でこれらを拒否します。メールが届くかどうかは、そのアドレスに送ってみないと分かりません。net/mail が書き直す形のアドレスは拒否します。引用符つきのローカル部（`"a b"@example.com`）は go-playground が通す形ですが、値をいつも書いたとおりの形で保つためです。
 
 `rule=Type` は、`Type` のルールをフィールドの値に適用します。`dive` の後では各要素に適用します。`Type` には 2 種類あります。1 つ目は [kanna-value](#kanna-value-との連携) の値オブジェクトで、kanna-value が与える形から判別され、コンストラクタ `NewType(T) (Type, error)` が値にルールを守らせます。2 つ目は kanna-value の enum で、コンストラクタ `NewType(string) (Type, error)` は定数だけを受け入れます。自分のルールは、構造体の `validate` メソッドに書きます（[ネストとフック](#ネストとフック)を参照）。構造体のあいだで共有する関数を、そこから呼ぶこともできます。修飾なしの `Type` は、その構造体のパッケージの型を指します。`pkg.Type` のパッケージは、Go がコードの `pkg.Type` を読むのと同じく、構造体のファイルがそのパッケージを import している名前で決まります。Go は使っていない名前つきの import を拒むので、タグでしか使わないパッケージは `_` で import します。そのパッケージは、パッケージ自身の名前で呼びます。ほかを探すことはしないので、ファイルが import していないパッケージはエラーになります。エラーには、何を import すればよいかが示されます。生成コードは、コンストラクタが返したものを、ルールが与えたコードとパラメータとともにそのフィールドに記録します。
@@ -189,7 +189,7 @@ user.go:42:11: error: "aeg" is not a path of CreateUserRequest: CreateUserReques
 }
 ```
 
-それぞれの `FieldError` は、パスを上のキーである `Field` と、`Segments` の両方で持ちます。`Segments` は、フィールド（`validator.FieldSegment`）とマップのキー（`validator.KeySegment`）と添字（`validator.IndexSegment`）を見分けます。キーはリクエストが送ってきたものそのままで、`labels.first_note` はフィールドと同じ形に綴られます。`Segments` を見れば、フィールドを名指す文言は、キーではなくパスの最後のフィールドで名付けられます。`FieldNames` は、フィールドの区切りの名前だけを `[]string` で並べるので、go-kanna/i18n のようなパッケージは、validator を import せずに、interface を通してフィールドを名付けられます。
+それぞれの `FieldError` は、パスを上のキーである `Field` と、`Segments` の両方で持ちます。`Segments` は、フィールド（`validator.FieldSegment`）とマップのキー（`validator.KeySegment`）と添字（`validator.IndexSegment`）を見分けます。キーはリクエストが送ってきたものそのままで、`labels.first_note` はフィールドと同じ形に綴られます。`Segments` を使えば、フィールドを名指すメッセージは、キーではなくパスの最後のフィールドの名前を使えます。`FieldNames` は、フィールドのセグメントの名前だけを `[]string` で並べるので、go-kanna/i18n のようなパッケージは、validator を import せずに、interface を通してフィールドを名付けられます。
 
 フィールドのキーは、トランスポートが何であっても、json タグが与える名前か、タグがなければ Go の名前です。gRPC ハンドラの裏側にある、json タグのないユースケースの入力は `TodoID` と報告します。proto で宣言された名前で報告するには、フィールドに `json:"id"` タグを付けてください。protoc-gen-go が生成するメッセージには、proto のフィールド名を持つ json タグが最初から付いています。
 
@@ -323,7 +323,7 @@ warning: no struct is marked //kanna:validate in example.com/app/user
 
 `Validate` は、初回の実行で書き出される前から呼び出していても構いません。kanna-validator は読み込んだパッケージを、これから書き出す内容を組み込んだ状態でもう一度型チェックし、コンパイルが通らない間は何も書き出しません。メソッドがないために隠れていた間違い、たとえば `Validate` の戻り値を合わない場所に渡すことも、このとき報告されます。
 
-すべての構造体から `//kanna:validate` がなくなったパッケージの `validator_gen.go` は、実行時に読み込んだパッケージのコードがその `Validate` をまだ呼び出していない限り、削除されます。同じ名前でも生成コードのヘッダがないファイルには決して触れません。削除を行う `go generate` は `open ...: no such file or directory` で終わります。これは go generate 自身のエラーで、ジェネレータを実行する前にパッケージのファイルを列挙しているためです。ファイルは意図どおり削除されています（[golang/go#36068](https://github.com/golang/go/issues/36068)）。
+すべての構造体から `//kanna:validate` がなくなったパッケージの `validator_gen.go` は、実行時に読み込んだパッケージのコードがその `Validate` をまだ呼び出していない限り、削除されます。同じ名前でも生成コードのヘッダがないファイルには決して触れません。ファイルを削除する `go generate` は `open ...: no such file or directory` で終わります。これは go generate 自身のエラーで、ジェネレータを実行する前にパッケージのファイルを列挙しているためです。ファイルは意図どおり削除されています（[golang/go#36068](https://github.com/golang/go/issues/36068)）。
 
 ## サンプル
 
