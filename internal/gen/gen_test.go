@@ -165,6 +165,29 @@ func TestCommand_Generates(t *testing.T) {
 	}
 }
 
+// The walk over a map compiles on its own, whether the keys have an order or
+// not, with nothing else in the file to use what it imports.
+func TestCommand_GeneratesAMapWalk(t *testing.T) {
+	t.Parallel()
+
+	for _, key := range []string{"string", "struct{ ID int }"} {
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+
+			dir := writeModule(t, map[string]string{"app.go": "package app\n\n//kanna:validate\ntype Request struct {\n" +
+				"\tValues map[" + key + "]string `validate:\"dive,required\"`\n}\n"})
+			if code, stdout, stderr := run(t, dir); code != cli.ExitOK {
+				t.Fatalf("run = %d, stdout %q, stderr %q; want success", code, stdout, stderr)
+			}
+			set, err := packages.Load([]string{"./..."}, packages.Config{Dir: dir})
+			if err != nil || len(set.Diags) > 0 {
+				t.Errorf("generated package does not load: %v %v\n%s", err, set.Diags,
+					readFile(t, filepath.Join(dir, "validator_gen.go")))
+			}
+		})
+	}
+}
+
 // A rule= names a package as the struct's file imports it: as _ where only the
 // tag names it, since Go rejects a named import nothing uses, or under the name
 // the file gives it. The generated file imports both as it sees fit.
