@@ -453,6 +453,18 @@ func TestGenerated_MapOfUnorderedKeys(t *testing.T) {
 	}
 }
 
+// A value under a NaN key, which no lookup finds, is still checked.
+func TestGenerated_MapOfANaNKey(t *testing.T) {
+	t.Parallel()
+
+	r := validRequest()
+	r.Odds = map[float64]string{math.NaN(): "too long", 1: "ok"}
+	want := "validator: odds.NaN: too_long (count=3)"
+	if got := r.Validate(); got == nil || got.Error() != want {
+		t.Errorf("Validate() = %v, want %s", got, want)
+	}
+}
+
 // The segments of an error tell the key of a map, whose name may look like
 // anything, from the fields around it.
 func TestGenerated_Segments(t *testing.T) {

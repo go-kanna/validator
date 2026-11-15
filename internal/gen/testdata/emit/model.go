@@ -76,52 +76,53 @@ type Since2000 = schedule.Since2000
 
 //kanna:validate
 type Request struct {
-	Name     string           `json:"name"      validate:"required,min=1,max=50"`
-	Age      int              `json:"age"       validate:"gte=18,lte=130"`
-	Level    uint8            `json:"level"     validate:"oneof=1 2 3"`
-	Quantity uint16           `json:"quantity"  validate:"lte=1000"`
-	Shade    string           `json:"shade"     validate:"omitempty,oneof='light blue' red"`
-	Score    float64          `json:"score"     validate:"gt=0"`
-	Ratio    float32          `json:"ratio"     validate:"gte=0,lte=1"`
-	Weight   float64          `json:"weight"    validate:"ne=0"`
-	Factor   float32          `json:"factor"    validate:"ne=1"`
-	Role     Role             `json:"role"      validate:"required,oneof=admin member"`
-	Nickname *string          `json:"nickname"  validate:"min=2"`
-	Tags     []string         `json:"tags"      validate:"max=5,dive,required,max=20"`
-	Matrix   [][]int          `json:"matrix"    validate:"dive,dive,gte=0"`
-	Labels   map[string]Role  `json:"labels"    validate:"dive,max=10"`
-	Zip      string           `json:"zip"       validate:"omitempty,pattern=^\\d{3}-\\d{4}$"`
-	PostCode string           `json:"post_code" validate:"omitempty,pattern=^\\d{3}-\\d{4}$"`
-	Code     Role             `json:"code"      validate:"pattern=^[A-Z]+$"`
-	Password string           `json:"password"  validate:"required"`
-	Confirm  string           `json:"confirm"   validate:"eqfield=Password"`
-	NewPass  *string          `json:"new_pass"`
-	NewAgain *string          `json:"new_again" validate:"eqfield=NewPass"`
-	Active   bool             `json:"active"    validate:"required"`
-	When     time.Time        `json:"when"      validate:"required"`
-	Point    Point            `json:"point"     validate:"required"`
-	Grid     [2]Point         `json:"grid"      validate:"dive,required"`
-	Address  Address          `json:"address"`
-	Billing  *Address         `json:"billing"   validate:"required"`
-	Items    []Item           `json:"items"     validate:"min=1"`
-	ByName   map[string]*Item `json:"by_name"`
-	Extra    Checker          `json:"extra"`
-	Count    int              `json:"count"     validate:"required"`
-	List     []string         `json:"list"      validate:"required"`
-	OptAge   int              `json:"opt_age"   validate:"omitempty,gte=1"`
-	OptTags  []string         `json:"opt_tags"  validate:"omitempty,min=2"`
-	OptAddr  Address          `json:"opt_addr"  validate:"omitempty"`
-	Span     Span             `json:"span"      validate:"omitempty"`
-	Picks    *[]string        `json:"picks"     validate:"dive,required"`
-	ByPoint  map[Point]Item   `json:"by_point"`
-	Tree     Tree             `json:"tree"`
-	DoneAt   *time.Time       `json:"done_at"   validate:"rule=schedule.Since2000"`
-	Due      *time.Time       `json:"due"       validate:"rule=schedule.Deadline"`
-	Shift    string           `json:"shift"     validate:"omitempty,rule=schedule.Shift"`
-	Shifts   []time.Time      `json:"shifts"    validate:"dive,rule=Since2000"`
-	Timeout  time.Duration    `json:"timeout"   validate:"omitempty,gte=1s,lte=90m"`
-	Backoff  *time.Duration   `json:"backoff"   validate:"oneof=0 1500ms"`
-	Stage    Stage            `json:"stage"     validate:"oneof=draft review,max=6"`
+	Name     string             `json:"name"      validate:"required,min=1,max=50"`
+	Age      int                `json:"age"       validate:"gte=18,lte=130"`
+	Level    uint8              `json:"level"     validate:"oneof=1 2 3"`
+	Quantity uint16             `json:"quantity"  validate:"lte=1000"`
+	Shade    string             `json:"shade"     validate:"omitempty,oneof='light blue' red"`
+	Score    float64            `json:"score"     validate:"gt=0"`
+	Ratio    float32            `json:"ratio"     validate:"gte=0,lte=1"`
+	Weight   float64            `json:"weight"    validate:"ne=0"`
+	Factor   float32            `json:"factor"    validate:"ne=1"`
+	Role     Role               `json:"role"      validate:"required,oneof=admin member"`
+	Nickname *string            `json:"nickname"  validate:"min=2"`
+	Tags     []string           `json:"tags"      validate:"max=5,dive,required,max=20"`
+	Matrix   [][]int            `json:"matrix"    validate:"dive,dive,gte=0"`
+	Labels   map[string]Role    `json:"labels"    validate:"dive,max=10"`
+	Odds     map[float64]string `json:"odds"      validate:"dive,max=3"`
+	Zip      string             `json:"zip"       validate:"omitempty,pattern=^\\d{3}-\\d{4}$"`
+	PostCode string             `json:"post_code" validate:"omitempty,pattern=^\\d{3}-\\d{4}$"`
+	Code     Role               `json:"code"      validate:"pattern=^[A-Z]+$"`
+	Password string             `json:"password"  validate:"required"`
+	Confirm  string             `json:"confirm"   validate:"eqfield=Password"`
+	NewPass  *string            `json:"new_pass"`
+	NewAgain *string            `json:"new_again" validate:"eqfield=NewPass"`
+	Active   bool               `json:"active"    validate:"required"`
+	When     time.Time          `json:"when"      validate:"required"`
+	Point    Point              `json:"point"     validate:"required"`
+	Grid     [2]Point           `json:"grid"      validate:"dive,required"`
+	Address  Address            `json:"address"`
+	Billing  *Address           `json:"billing"   validate:"required"`
+	Items    []Item             `json:"items"     validate:"min=1"`
+	ByName   map[string]*Item   `json:"by_name"`
+	Extra    Checker            `json:"extra"`
+	Count    int                `json:"count"     validate:"required"`
+	List     []string           `json:"list"      validate:"required"`
+	OptAge   int                `json:"opt_age"   validate:"omitempty,gte=1"`
+	OptTags  []string           `json:"opt_tags"  validate:"omitempty,min=2"`
+	OptAddr  Address            `json:"opt_addr"  validate:"omitempty"`
+	Span     Span               `json:"span"      validate:"omitempty"`
+	Picks    *[]string          `json:"picks"     validate:"dive,required"`
+	ByPoint  map[Point]Item     `json:"by_point"`
+	Tree     Tree               `json:"tree"`
+	DoneAt   *time.Time         `json:"done_at"   validate:"rule=schedule.Since2000"`
+	Due      *time.Time         `json:"due"       validate:"rule=schedule.Deadline"`
+	Shift    string             `json:"shift"     validate:"omitempty,rule=schedule.Shift"`
+	Shifts   []time.Time        `json:"shifts"    validate:"dive,rule=Since2000"`
+	Timeout  time.Duration      `json:"timeout"   validate:"omitempty,gte=1s,lte=90m"`
+	Backoff  *time.Duration     `json:"backoff"   validate:"oneof=0 1500ms"`
+	Stage    Stage              `json:"stage"     validate:"oneof=draft review,max=6"`
 	Audit
 }
 

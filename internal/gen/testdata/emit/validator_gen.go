@@ -3,10 +3,8 @@
 package emit
 
 import (
-	"maps"
 	"math"
 	"regexp"
-	"slices"
 	"time"
 	"unicode/utf8"
 
@@ -125,10 +123,15 @@ func (x Request) Validate() error {
 		}
 	}
 
-	for _, k := range slices.Sorted(maps.Keys(x.Labels)) {
-		v := x.Labels[k]
+	for k, v := range impl.SortedByKey(x.Labels) {
 		if utf8.RuneCountInString(string(v)) > 10 {
 			errs.Add(validator.Field("labels").Key(k), validator.TooLong(10))
+		}
+	}
+
+	for k, v := range impl.SortedByKey(x.Odds) {
+		if utf8.RuneCountInString(v) > 3 {
+			errs.Add(validator.Field("odds").Key(k), validator.TooLong(3))
 		}
 	}
 
@@ -195,8 +198,7 @@ func (x Request) Validate() error {
 		errs.Nest(validator.Field("items").Index(i), x.Items[i].Validate())
 	}
 
-	for _, k := range slices.Sorted(maps.Keys(x.ByName)) {
-		v := x.ByName[k]
+	for k, v := range impl.SortedByKey(x.ByName) {
 		if v != nil {
 			errs.Nest(validator.Field("by_name").Key(k), v.Validate())
 		}
@@ -242,8 +244,7 @@ func (x Request) Validate() error {
 		}
 	}
 
-	for _, k := range impl.SortedKeys(x.ByPoint) {
-		v := x.ByPoint[k]
+	for k, v := range impl.SortedByName(x.ByPoint) {
 		errs.Nest(validator.Field("by_point").Key(k), v.Validate())
 	}
 
@@ -355,8 +356,7 @@ func (x Promoted) Validate() error {
 		}
 	}
 
-	for _, k := range slices.Sorted(maps.Keys(x.Map)) {
-		v := x.Map[k]
+	for k, v := range impl.SortedByKey(x.Map) {
 		if v.Item != nil {
 			errs.Nest(validator.Field("map").Key(k), v.Validate())
 		}
