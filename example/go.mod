@@ -11,11 +11,11 @@ tool (
 
 require (
 	github.com/go-kanna/validator v0.0.27
-	github.com/go-kanna/value v0.0.18
+	github.com/go-kanna/value v0.1.0
 )
 
 require (
-	github.com/go-kanna/internal v0.0.34-0.20261115032209-5ca03e729550 // indirect
+	github.com/go-kanna/internal v0.1.0 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/tools v0.52.0 // indirect
